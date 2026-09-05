@@ -38,6 +38,9 @@ media/
 # Archivos estaticos recolectados para produccion
 staticfiles/
 
+# Carpetas de uso temporal
+temporal/
+
 # Registros
 *.log
 
