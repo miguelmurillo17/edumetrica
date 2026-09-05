@@ -31,7 +31,7 @@ class Command(BaseCommand):
     def crear_niveles(self):
         """Da de alta los seis niveles de dificultad que maneja el sistema."""
         nombres = {
-            1: 'Basico',
+            1: 'Básico',
             2: 'Elemental',
             3: 'Intermedio',
             4: 'Avanzado',
@@ -49,8 +49,8 @@ class Command(BaseCommand):
         """Crea una institucion, una materia y una categoria de ejemplo."""
         Institucion.objects.get_or_create(nombre='Preparatoria de ejemplo')
 
-        materia, _ = Materia.objects.get_or_create(nombre='Matematicas')
-        Categoria.objects.get_or_create(materia=materia, nombre='Aritmetica')
+        materia, _ = Materia.objects.get_or_create(nombre='Matemáticas')
+        Categoria.objects.get_or_create(materia=materia, nombre='Aritmética')
         self.stdout.write('Catalogo de ejemplo listo.')
 
     def crear_usuarios_prueba(self):

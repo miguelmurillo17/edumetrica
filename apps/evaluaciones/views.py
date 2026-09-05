@@ -140,7 +140,7 @@ def finalizar_evaluacion(request, evaluacion_id):
 
         messages.success(
             request,
-            'La evaluacion se finalizo. Los alumnos en curso veran su resultado.',
+            'La evaluación se finalizó. Los alumnos en curso verán su resultado.',
         )
 
     return redirect('evaluaciones:detalle_evaluacion', evaluacion_id=evaluacion.id)
@@ -182,7 +182,7 @@ def crear_evaluacion(request):
             evaluacion.numero_preguntas = len(preguntas)
             evaluacion.save(update_fields=['numero_preguntas'])
 
-            messages.success(request, 'La evaluacion se programo correctamente.')
+            messages.success(request, 'La evaluación se programó correctamente.')
             return redirect('evaluaciones:lista_evaluaciones')
     else:
         formulario = EvaluacionForm(usuario=request.user)

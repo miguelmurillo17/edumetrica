@@ -15,7 +15,7 @@ class Institucion(models.Model):
     telefono = models.CharField(max_length=20, blank=True)
 
     class Meta:
-        verbose_name = 'institucion'
+        verbose_name = 'institución'
         verbose_name_plural = 'instituciones'
 
     def __str__(self):
@@ -51,8 +51,8 @@ class Categoria(models.Model):
     activa = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = 'categoria'
-        verbose_name_plural = 'categorias'
+        verbose_name = 'categoría'
+        verbose_name_plural = 'categorías'
         ordering = ['materia', 'nombre']
         # No se puede repetir el mismo nombre de categoria dentro de una materia.
         unique_together = ['materia', 'nombre']
@@ -132,7 +132,7 @@ class OpcionRespuesta(models.Model):
     es_correcta = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = 'opcion de respuesta'
+        verbose_name = 'opción de respuesta'
         verbose_name_plural = 'opciones de respuesta'
 
     def __str__(self):

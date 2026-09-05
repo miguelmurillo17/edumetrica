@@ -1,19 +1,19 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Evaluaciones - Edumetrica{% endblock %}
+{% block titulo %}Evaluaciones - Edumétrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
     <div class="encabezado-lista">
         <h1>Mis evaluaciones</h1>
-        <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:crear_evaluacion' %}">Programar evaluacion</a>
+        <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:crear_evaluacion' %}">Programar evaluación</a>
     </div>
 
     {% if evaluaciones %}
     <table class="tabla">
         <thead>
             <tr>
-                <th>Titulo</th>
+                <th>Título</th>
                 <th>Grupo</th>
                 <th>Materia</th>
                 <th>Preguntas</th>
@@ -35,7 +35,7 @@
         </tbody>
     </table>
     {% else %}
-    <p>Aun no has programado evaluaciones. Programa la primera.</p>
+    <p>Aún no has programado evaluaciones. Programa la primera.</p>
     {% endif %}
 </section>
 {% endblock %}

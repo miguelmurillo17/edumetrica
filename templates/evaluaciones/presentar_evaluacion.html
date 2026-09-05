@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block titulo %}{{ evaluacion.titulo }} - Edumetrica{% endblock %}
+{% block titulo %}{{ evaluacion.titulo }} - Edumétrica{% endblock %}
 
 {% block contenido %}
 <div id="app" class="quiz">
 
     <!-- Mientras carga la evaluacion -->
-    <p v-if="estado === 'cargando'" class="quiz-aviso">Cargando evaluacion...</p>
+    <p v-if="estado === 'cargando'" class="quiz-aviso">Cargando evaluación...</p>
 
     <!-- Si ocurre algun error -->
     <div v-else-if="estado === 'error'" class="quiz-aviso">
@@ -54,7 +54,7 @@
     <div v-else-if="estado === 'resultado'" class="quiz-resultado">
         <h1>Resultado</h1>
         <p v-if="finalizadaPorProfesor" class="aviso-finalizada">
-            El profesor finalizo la evaluacion. Este es tu resultado hasta ese momento.
+            El profesor finalizó la evaluación. Este es tu resultado hasta ese momento.
         </p>
         <div class="calificacion-grande">[[ resultado.calificacion ]]</div>
         <p>Acertaste [[ resultado.aciertos ]] de [[ resultado.total ]] preguntas.</p>

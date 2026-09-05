@@ -1,13 +1,13 @@
 Hola {{ user.nombre }}:
 
-Recibimos una solicitud para restablecer la contrasena de tu cuenta de
-Edumetrica ({{ user.correo }}).
+Recibimos una solicitud para restablecer la contraseña de tu cuenta de
+Edumétrica ({{ user.correo }}).
 
-Entra al siguiente enlace para elegir una contrasena nueva:
+Entra al siguiente enlace para elegir una contraseña nueva:
 
 {{ protocol }}://{{ domain }}{% url 'usuarios:restablecer_confirmar' uidb64=uid token=token %}
 
-El enlace sirve una sola vez. Si tu no pediste el cambio, ignora este mensaje:
-tu contrasena seguira siendo la misma.
+El enlace sirve una sola vez. Si tú no pediste el cambio, ignora este mensaje:
+tu contraseña seguirá siendo la misma.
 
-Edumetrica
+Edumétrica

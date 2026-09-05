@@ -26,12 +26,12 @@ class SimilitudConDatosPersonales(reglas.UserAttributeSimilarityValidator):
             super().validate(password, user)
         except ValidationError:
             raise ValidationError(
-                'Tu contrasena se parece demasiado a tus datos personales.',
+                'Tu contraseña se parece demasiado a tus datos personales.',
                 code='password_too_similar',
             )
 
     def get_help_text(self):
-        return 'No uses tu nombre ni tu correo dentro de la contrasena.'
+        return 'No uses tu nombre ni tu correo dentro de la contraseña.'
 
 
 class LargoMinimo(reglas.MinimumLengthValidator):
@@ -40,7 +40,7 @@ class LargoMinimo(reglas.MinimumLengthValidator):
     def validate(self, password, user=None):
         if len(password) < self.min_length:
             raise ValidationError(
-                f'Tu contrasena es muy corta. Debe tener al menos '
+                f'Tu contraseña es muy corta. Debe tener al menos '
                 f'{self.min_length} caracteres.',
                 code='password_too_short',
             )
@@ -57,12 +57,12 @@ class ContrasenaComun(reglas.CommonPasswordValidator):
             super().validate(password, user)
         except ValidationError:
             raise ValidationError(
-                'Tu contrasena es demasiado comun. Elige una menos predecible.',
+                'Tu contraseña es demasiado común. Elige una menos predecible.',
                 code='password_too_common',
             )
 
     def get_help_text(self):
-        return 'No uses contrasenas comunes como "12345678" o "password".'
+        return 'No uses contraseñas comunes como "12345678" o "password".'
 
 
 class SoloNumeros(reglas.NumericPasswordValidator):
@@ -71,9 +71,9 @@ class SoloNumeros(reglas.NumericPasswordValidator):
     def validate(self, password, user=None):
         if password.isdigit():
             raise ValidationError(
-                'Tu contrasena no puede ser solo numeros.',
+                'Tu contraseña no puede ser solo números.',
                 code='password_entirely_numeric',
             )
 
     def get_help_text(self):
-        return 'No puede ser solo numeros.'
+        return 'No puede ser solo números.'

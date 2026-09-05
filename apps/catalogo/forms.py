@@ -26,7 +26,7 @@ class PreguntaForm(forms.ModelForm):
             Categoria.objects.filter(activa=True).select_related('materia')
         )
         self.fields['nivel'].queryset = Nivel.objects.all()
-        self.fields['categoria'].label = 'Categoria'
+        self.fields['categoria'].label = 'Categoría'
         self.fields['nivel'].label = 'Nivel'
         self.fields['enunciado'].label = 'Enunciado de la pregunta'
         self.fields['imagen'].label = 'Imagen de la pregunta (opcional)'

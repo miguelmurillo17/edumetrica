@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Panel del profesor - Edumetrica{% endblock %}
+{% block titulo %}Panel del profesor - Edumétrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
     <h1>Panel del profesor</h1>
-    <p>Bienvenido, {{ user.nombre }}. Desde aqui podras programar evaluaciones
+    <p>Bienvenido, {{ user.nombre }}. Desde aquí podrás programar evaluaciones
        y dar seguimiento al avance de tus grupos.</p>
 
     <div class="tarjetas">
@@ -19,11 +19,11 @@
         </a>
         <a class="tarjeta" href="{% url 'evaluaciones:lista_evaluaciones' %}">
             <h2>Evaluaciones</h2>
-            <p>Programa una nueva evaluacion para un grupo.</p>
+            <p>Programa una nueva evaluación para un grupo.</p>
         </a>
         <a class="tarjeta" href="{% url 'reportes:dashboard' %}">
             <h2>Tablero</h2>
-            <p>Revisa estadisticas del desempeno de tus alumnos.</p>
+            <p>Revisa estadísticas del desempeño de tus alumnos.</p>
         </a>
     </div>
 </section>

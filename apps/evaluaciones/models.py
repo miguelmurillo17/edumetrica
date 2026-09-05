@@ -89,7 +89,7 @@ class Evaluacion(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        verbose_name = 'evaluacion'
+        verbose_name = 'evaluación'
         verbose_name_plural = 'evaluaciones'
         ordering = ['-fecha_inicio']
 
@@ -120,8 +120,8 @@ class CategoriaEvaluacion(models.Model):
     numero_preguntas = models.PositiveSmallIntegerField()
 
     class Meta:
-        verbose_name = 'categoria de la evaluacion'
-        verbose_name_plural = 'categorias de la evaluacion'
+        verbose_name = 'categoría de la evaluación'
+        verbose_name_plural = 'categorías de la evaluación'
         # Una categoria no se puede repetir dentro de la misma evaluacion.
         constraints = [
             models.UniqueConstraint(
@@ -168,8 +168,8 @@ class IntentoEvaluacion(models.Model):
     )
 
     class Meta:
-        verbose_name = 'intento de evaluacion'
-        verbose_name_plural = 'intentos de evaluacion'
+        verbose_name = 'intento de evaluación'
+        verbose_name_plural = 'intentos de evaluación'
         # Cada alumno presenta una evaluacion una sola vez.
         unique_together = ['evaluacion', 'alumno']
 

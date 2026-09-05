@@ -77,17 +77,17 @@ def iniciar_evaluacion(request, evaluacion_id):
 
     # El alumno solo puede presentar evaluaciones de sus grupos.
     if not evaluacion.grupo.alumnos.filter(id=alumno.id).exists():
-        return Response({'detalle': 'No tienes acceso a esta evaluacion.'}, status=403)
+        return Response({'detalle': 'No tienes acceso a esta evaluación.'}, status=403)
 
     if not evaluacion.esta_disponible():
-        return Response({'detalle': 'La evaluacion no esta disponible en este momento.'}, status=400)
+        return Response({'detalle': 'La evaluación no está disponible en este momento.'}, status=400)
 
     intento, _ = IntentoEvaluacion.objects.get_or_create(
         evaluacion=evaluacion, alumno=alumno
     )
 
     if intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
-        return Response({'detalle': 'Ya presentaste esta evaluacion.'}, status=400)
+        return Response({'detalle': 'Ya presentaste esta evaluación.'}, status=400)
 
     # Las respuestas que el alumno ya haya guardado, para poder reanudar.
     previas = {
@@ -117,7 +117,7 @@ def responder_pregunta(request, intento_id):
 
     # La pregunta debe formar parte de esta evaluacion.
     if not intento.evaluacion.preguntas.filter(id=pregunta_id).exists():
-        return Response({'detalle': 'La pregunta no pertenece a la evaluacion.'}, status=400)
+        return Response({'detalle': 'La pregunta no pertenece a la evaluación.'}, status=400)
 
     pregunta = get_object_or_404(Pregunta, id=pregunta_id)
     opcion = get_object_or_404(OpcionRespuesta, id=opcion_id, pregunta=pregunta)

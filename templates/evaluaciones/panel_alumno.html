@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Mis evaluaciones - Edumetrica{% endblock %}
+{% block titulo %}Mis evaluaciones - Edumétrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
     <h1>Hola, {{ user.nombre }}</h1>
-    <p>Estas son tus evaluaciones. Presenta las que esten disponibles.</p>
+    <p>Estas son tus evaluaciones. Presenta las que estén disponibles.</p>
 
     {% if evaluaciones %}
     <div class="tarjetas">
@@ -23,7 +23,7 @@
 
             {% elif fila.situacion == 'finalizada' %}
             <span class="etiqueta etiqueta-finalizada">Finalizada</span>
-            <p class="calificacion-mini">Calificacion: {{ fila.intento.calificacion }}</p>
+            <p class="calificacion-mini">Calificación: {{ fila.intento.calificacion }}</p>
 
             {% elif fila.situacion == 'proxima' %}
             <span class="etiqueta etiqueta-proxima">Programada</span>
@@ -36,7 +36,7 @@
         {% endfor %}
     </div>
     {% else %}
-    <p>Todavia no tienes evaluaciones asignadas.</p>
+    <p>Todavía no tienes evaluaciones asignadas.</p>
     {% endif %}
 </section>
 {% endblock %}

@@ -1,4 +1,4 @@
-# Edumetrica
+# Edumétrica
 
 Sistema de apoyo para el fortalecimiento de habilidades de nivel medio superior.
 Permite a los profesores programar evaluaciones de opcion multiple a sus grupos,

@@ -43,7 +43,7 @@ class EvaluacionForm(forms.ModelForm):
         self.fields['fecha_inicio'].input_formats = ['%Y-%m-%dT%H:%M']
         self.fields['fecha_fin'].input_formats = ['%Y-%m-%dT%H:%M']
 
-        self.fields['titulo'].label = 'Titulo de la evaluacion'
+        self.fields['titulo'].label = 'Título de la evaluación'
         self.fields['fecha_inicio'].label = 'Inicio'
         self.fields['fecha_fin'].label = 'Fin'
 
@@ -100,13 +100,13 @@ class BaseCategoriasFormSet(BaseInlineFormSet):
 
         if not renglones:
             raise forms.ValidationError(
-                'Debes agregar al menos una categoria con su numero de preguntas.'
+                'Debes agregar al menos una categoría con su número de preguntas.'
             )
 
         # Una misma categoria no se puede capturar dos veces.
         elegidas = [datos['categoria'] for datos in renglones]
         if len(elegidas) != len(set(elegidas)):
-            raise forms.ValidationError('Hay categorias repetidas en la tabla.')
+            raise forms.ValidationError('Hay categorías repetidas en la tabla.')
 
         for datos in renglones:
             categoria = datos['categoria']
@@ -115,19 +115,19 @@ class BaseCategoriasFormSet(BaseInlineFormSet):
             # Todas las categorias deben ser de la materia elegida.
             if self.materia is not None and categoria.materia_id != self.materia.id:
                 raise forms.ValidationError(
-                    f'La categoria {categoria.nombre} no pertenece a la materia elegida.'
+                    f'La categoría {categoria.nombre} no pertenece a la materia elegida.'
                 )
 
             if not numero or numero < 1:
                 raise forms.ValidationError(
-                    f'La categoria {categoria.nombre} debe pedir al menos una pregunta.'
+                    f'La categoría {categoria.nombre} debe pedir al menos una pregunta.'
                 )
 
             # Debe haber preguntas suficientes en el banco.
             disponibles = Pregunta.objects.filter(activa=True, categoria=categoria).count()
             if disponibles < numero:
                 raise forms.ValidationError(
-                    f'La categoria {categoria.nombre} solo tiene {disponibles} '
+                    f'La categoría {categoria.nombre} solo tiene {disponibles} '
                     f'preguntas disponibles.'
                 )
 

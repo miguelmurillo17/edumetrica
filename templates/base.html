@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block titulo %}Edumetrica{% endblock %}</title>
+    <title>{% block titulo %}Edumétrica{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'css/estilos.css' %}">
     {% block cabecera %}{% endblock %}
 </head>
@@ -12,9 +12,9 @@
     {% if user.is_authenticated %}
     <header class="barra-superior">
         {% if user.is_superuser or user.es_administrador %}
-        <a class="marca" href="{% url 'usuarios:inicio' %}">Edumetrica</a>
+        <a class="marca" href="{% url 'usuarios:inicio' %}">Edumétrica</a>
         {% else %}
-        <div class="marca">Edumetrica</div>
+        <div class="marca">Edumétrica</div>
         {% endif %}
         <nav class="menu">
             <span class="usuario">{{ user.nombre_completo }}</span>

@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Mis grupos - Edumetrica{% endblock %}
+{% block titulo %}Mis grupos - Edumétrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
@@ -16,7 +16,7 @@
         </div>
 
         <p class="datos-grupo">
-            Institucion: {{ grupo.institucion.nombre|default:"sin institucion" }} &middot;
+            Institución: {{ grupo.institucion.nombre|default:"sin institución" }} &middot;
             Alumnos: {{ grupo.alumnos.all|length }} &middot;
             Profesores: {% for profesor in grupo.profesores.all %}{{ profesor.nombre_completo }}{% if not forloop.last %}, {% endif %}{% empty %}sin profesores{% endfor %}
         </p>
@@ -41,11 +41,11 @@
             </tbody>
         </table>
         {% else %}
-        <p>Este grupo todavia no tiene alumnos asignados.</p>
+        <p>Este grupo todavía no tiene alumnos asignados.</p>
         {% endif %}
     </div>
     {% empty %}
-    <p>Todavia no tienes grupos asignados. El administrador es quien los asigna.</p>
+    <p>Todavía no tienes grupos asignados. El administrador es quien los asigna.</p>
     {% endfor %}
 </section>
 {% endblock %}

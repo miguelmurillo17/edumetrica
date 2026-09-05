@@ -1,12 +1,12 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Nueva contrasena - Edumetrica{% endblock %}
+{% block titulo %}Nueva contraseña - Edumétrica{% endblock %}
 
 {% block contenido %}
 <div class="caja-acceso">
     {% if validlink %}
-    <h1 class="titulo-acceso">Nueva contrasena</h1>
-    <p class="subtitulo-acceso">Escribela dos veces para confirmar</p>
+    <h1 class="titulo-acceso">Nueva contraseña</h1>
+    <p class="subtitulo-acceso">Escríbela dos veces para confirmar</p>
 
     <form method="post" class="formulario">
         {% csrf_token %}
@@ -30,12 +30,12 @@
             {{ form.new_password2.errors }}
         </div>
 
-        <button type="submit" class="boton-principal">Guardar contrasena</button>
+        <button type="submit" class="boton-principal">Guardar contraseña</button>
     </form>
     {% else %}
     <h1 class="titulo-acceso">Enlace vencido</h1>
     <p class="subtitulo-acceso">
-        Este enlace ya se uso o dejo de ser valido. Pide uno nuevo para
+        Este enlace ya se uso o dejó de ser válido. Pide uno nuevo para
         continuar.
     </p>
 

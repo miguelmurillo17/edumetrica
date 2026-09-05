@@ -25,14 +25,14 @@ CONTRASENA = 'Edumetrica2026'
 
 # Estructura de materias y sus categorias para la demostracion.
 ESTRUCTURA = {
-    'Matematicas': ['Aritmetica', 'Algebra'],
-    'Literatura': ['Comprension', 'Gramatica'],
+    'Matemáticas': ['Aritmética', 'Álgebra'],
+    'Literatura': ['Comprensión', 'Gramática'],
 }
 
 NOMBRES = [
-    ('Sofia', 'Ramirez'), ('Mateo', 'Torres'), ('Valeria', 'Flores'),
-    ('Diego', 'Castro'), ('Camila', 'Reyes'), ('Sebastian', 'Mendoza'),
-    ('Renata', 'Vargas'), ('Emiliano', 'Guzman'), ('Regina', 'Ortiz'),
+    ('Sofía', 'Ramírez'), ('Mateo', 'Torres'), ('Valeria', 'Flores'),
+    ('Diego', 'Castro'), ('Camila', 'Reyes'), ('Sebastián', 'Mendoza'),
+    ('Renata', 'Vargas'), ('Emiliano', 'Guzmán'), ('Regina', 'Ortiz'),
     ('Leonardo', 'Silva'), ('Ximena', 'Rios'), ('Daniel', 'Navarro'),
 ]
 
@@ -121,13 +121,13 @@ class Command(BaseCommand):
                 pregunta = Pregunta.objects.create(
                     materia=categoria.materia, categoria=categoria,
                     nivel=Nivel.objects.get(numero=random.randint(1, 6)),
-                    enunciado=f'{categoria.nombre}: pregunta de ejemplo numero {numero}',
+                    enunciado=f'{categoria.nombre}: pregunta de ejemplo número {numero}',
                     creada_por=profesor,
                 )
                 # La primera opcion siempre es la correcta.
                 OpcionRespuesta.objects.create(pregunta=pregunta, texto='Respuesta correcta', es_correcta=True)
                 for letra in ['A', 'B', 'C']:
-                    OpcionRespuesta.objects.create(pregunta=pregunta, texto=f'Opcion {letra}', es_correcta=False)
+                    OpcionRespuesta.objects.create(pregunta=pregunta, texto=f'Opción {letra}', es_correcta=False)
                 preguntas_por_materia.setdefault(categoria.materia.nombre, []).append(pregunta)
         return preguntas_por_materia
 
@@ -158,8 +158,8 @@ class Command(BaseCommand):
 
     def crear_evaluacion_disponible(self, profesor, grupo, preguntas_por_materia):
         """Crea una evaluacion disponible ahora para poder probar el flujo del alumno."""
-        materia = Materia.objects.get(nombre='Matematicas')
-        seleccion = preguntas_por_materia['Matematicas'][:5]
+        materia = Materia.objects.get(nombre='Matemáticas')
+        seleccion = preguntas_por_materia['Matemáticas'][:5]
         ahora = timezone.now()
 
         evaluacion = Evaluacion.objects.create(

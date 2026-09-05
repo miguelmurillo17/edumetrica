@@ -1,15 +1,15 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Acceso - Edumetrica{% endblock %}
+{% block titulo %}Acceso - Edumétrica{% endblock %}
 
 {% block contenido %}
 <div class="caja-acceso">
-    <h1 class="titulo-acceso">Edumetrica</h1>
+    <h1 class="titulo-acceso">Edumétrica</h1>
     <p class="subtitulo-acceso">Ingresa con tu correo para continuar</p>
 
     {% if form.errors %}
     <div class="aviso-error">
-        El correo o la contrasena no son correctos. Intentalo de nuevo.
+        El correo o la contraseña no son correctos. Inténtalo de nuevo.
     </div>
     {% endif %}
 
@@ -27,7 +27,7 @@
     </form>
 
     <p class="pie-acceso">
-        <a href="{% url 'usuarios:restablecer' %}">Olvide mi contrasena</a>
+        <a href="{% url 'usuarios:restablecer' %}">Olvidé mi contraseña</a>
     </p>
 </div>
 {% endblock %}

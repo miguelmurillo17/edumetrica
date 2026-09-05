@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block titulo %}{% if pregunta %}Editar pregunta{% else %}Nueva pregunta{% endif %} - Edumetrica{% endblock %}
+{% block titulo %}{% if pregunta %}Editar pregunta{% else %}Nueva pregunta{% endif %} - Edumétrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
@@ -38,7 +38,7 @@
         </div>
 
         <h2>Opciones de respuesta</h2>
-        <p class="ayuda">Captura las cuatro opciones y marca cual es la correcta.</p>
+        <p class="ayuda">Captura las cuatro opciones y marca cuál es la correcta.</p>
 
         {% if opciones.non_form_errors %}
         <div class="aviso-error">{{ opciones.non_form_errors }}</div>
@@ -48,7 +48,7 @@
 
         {% for opcion in opciones %}
         <div class="opcion">
-            <span class="numero-opcion">Opcion {{ forloop.counter }}</span>
+            <span class="numero-opcion">Opción {{ forloop.counter }}</span>
 
             {% if opcion.non_field_errors %}
             <div class="aviso-error">{{ opcion.non_field_errors }}</div>

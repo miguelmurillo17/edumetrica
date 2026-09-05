@@ -1,11 +1,11 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Programar evaluacion - Edumetrica{% endblock %}
+{% block titulo %}Programar evaluación - Edumétrica{% endblock %}
 
 
 {% block contenido %}
 <section class="panel">
-    <h1>Programar evaluacion</h1>
+    <h1>Programar evaluación</h1>
 
     <form method="post" class="formulario">
         {% csrf_token %}
@@ -33,8 +33,8 @@
         </div>
 
         <div class="campo">
-            <label>Categorias y numero de preguntas</label>
-            <p class="ayuda">Agrega un renglon por cada categoria de la que quieras
+            <label>Categorías y número de preguntas</label>
+            <p class="ayuda">Agrega un renglón por cada categoría de la que quieras
                sacar preguntas. Debe haber al menos uno.</p>
 
             {% if filas.non_form_errors %}
@@ -46,7 +46,7 @@
             <table class="tabla tabla-categorias">
                 <thead>
                     <tr>
-                        <th>Categoria</th>
+                        <th>Categoría</th>
                         <th class="columna-numero">Preguntas</th>
                         <th class="columna-icono"></th>
                     </tr>
@@ -78,7 +78,7 @@
             </table>
 
             <button type="button" class="boton-secundario" id="agregar-categoria">
-                Agregar categoria
+                Agregar categoría
             </button>
 
             {# Molde que copia el navegador cada vez que se agrega un renglon. #}

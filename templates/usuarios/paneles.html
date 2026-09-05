@@ -1,17 +1,17 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Paneles del sistema - Edumetrica{% endblock %}
+{% block titulo %}Paneles del sistema - Edumétrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
     <h1>Paneles del sistema</h1>
     <p>Bienvenido, {{ user.nombre }}. Como superusuario tienes acceso a los tres
-       paneles; elige desde cual quieres trabajar.</p>
+       paneles; elige desde cuál quieres trabajar.</p>
 
     <div class="tarjetas">
         <a class="tarjeta" href="/admin/">
-            <h2>Administracion</h2>
-            <p>Alta de instituciones, usuarios, materias, categorias y niveles.</p>
+            <h2>Administración</h2>
+            <p>Alta de instituciones, usuarios, materias, categorías y niveles.</p>
         </a>
         <a class="tarjeta" href="{% url 'evaluaciones:panel_profesor' %}">
             <h2>Profesor</h2>
