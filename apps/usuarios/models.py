@@ -78,6 +78,9 @@ class Persona(AbstractBaseUser, PermissionsMixin):
 
     # El correo reemplaza al nombre de usuario para iniciar sesion.
     USERNAME_FIELD = 'correo'
+    # Django manda aqui el mensaje para restablecer la contrasena. Sin esto
+    # buscaria un campo llamado "email", que este modelo no tiene.
+    EMAIL_FIELD = 'correo'
     REQUIRED_FIELDS = ['nombre', 'apellido']
 
     class Meta:

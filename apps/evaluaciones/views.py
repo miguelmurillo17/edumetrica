@@ -10,7 +10,7 @@ from apps.usuarios.decoradores import roles_permitidos
 from apps.catalogo.models import Pregunta
 
 from .models import Grupo, Evaluacion, IntentoEvaluacion
-from .forms import EvaluacionForm
+from .forms import EvaluacionForm, CategoriaEvaluacionFormSet
 
 
 @login_required
@@ -151,25 +151,42 @@ def finalizar_evaluacion(request, evaluacion_id):
 def crear_evaluacion(request):
     """Programa una evaluacion y arma el conjunto de preguntas al azar."""
     if request.method == 'POST':
-        formulario = EvaluacionForm(request.POST, profesor=request.user)
-        if formulario.is_valid():
+        formulario = EvaluacionForm(request.POST, usuario=request.user)
+        filas = CategoriaEvaluacionFormSet(request.POST)
+
+        # La materia vive en el otro formulario, pero la tabla la necesita
+        # para revisar que las categorias capturadas le correspondan.
+        formulario_valido = formulario.is_valid()
+        filas.materia = formulario.cleaned_data.get('materia') if formulario_valido else None
+
+        if formulario_valido and filas.is_valid():
             evaluacion = formulario.save(commit=False)
             evaluacion.profesor = request.user
             evaluacion.save()
-            # Guarda las categorias elegidas en el formulario.
-            formulario.save_m2m()
 
-            # Se eligen al azar las preguntas entre las categorias elegidas.
-            preguntas = list(
-                Pregunta.objects
-                .filter(activa=True, categoria__in=evaluacion.categorias.all())
-                .order_by('?')[:evaluacion.numero_preguntas]
-            )
+            # Guarda los renglones de categorias con su numero de preguntas.
+            filas.instance = evaluacion
+            filas.save()
+
+            # Por cada categoria se toman al azar las preguntas que pidio.
+            preguntas = []
+            for fila in evaluacion.categorias_elegidas.all():
+                preguntas += list(
+                    Pregunta.objects
+                    .filter(activa=True, categoria=fila.categoria)
+                    .order_by('?')[:fila.numero_preguntas]
+                )
             evaluacion.preguntas.set(preguntas)
+
+            # El total de la evaluacion es la suma de todos los renglones.
+            evaluacion.numero_preguntas = len(preguntas)
+            evaluacion.save(update_fields=['numero_preguntas'])
 
             messages.success(request, 'La evaluacion se programo correctamente.')
             return redirect('evaluaciones:lista_evaluaciones')
     else:
-        formulario = EvaluacionForm(profesor=request.user)
+        formulario = EvaluacionForm(usuario=request.user)
+        filas = CategoriaEvaluacionFormSet()
 
-    return render(request, 'evaluaciones/crear_evaluacion.html', {'formulario': formulario})
+    contexto = {'formulario': formulario, 'filas': filas}
+    return render(request, 'evaluaciones/crear_evaluacion.html', contexto)

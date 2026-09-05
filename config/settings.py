@@ -105,18 +105,20 @@ else:
 
 
 # Validaciones de contrasena.
+# Son las mismas revisiones que trae Django, con los mensajes redactados
+# de tu, igual que el resto del sistema (ver apps/usuarios/validadores.py).
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME': 'apps.usuarios.validadores.SimilitudConDatosPersonales',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME': 'apps.usuarios.validadores.LargoMinimo',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME': 'apps.usuarios.validadores.ContrasenaComun',
     },
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME': 'apps.usuarios.validadores.SoloNumeros',
     },
 ]
 
@@ -129,6 +131,22 @@ AUTH_USER_MODEL = 'usuarios.Persona'
 LOGIN_URL = 'usuarios:inicio_sesion'
 LOGIN_REDIRECT_URL = 'usuarios:inicio'
 LOGOUT_REDIRECT_URL = 'usuarios:inicio_sesion'
+
+
+# Envio de correo, usado para restablecer la contrasena.
+# En desarrollo el mensaje se imprime en la consola; en produccion se manda
+# por SMTP con los datos del archivo .env.
+if config('EMAIL_BACKEND', default='consola') == 'smtp':
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_HOST = config('EMAIL_HOST', default='')
+    EMAIL_PORT = config('EMAIL_PORT', default=587, cast=int)
+    EMAIL_HOST_USER = config('EMAIL_HOST_USER', default='')
+    EMAIL_HOST_PASSWORD = config('EMAIL_HOST_PASSWORD', default='')
+    EMAIL_USE_TLS = config('EMAIL_USE_TLS', default=True, cast=bool)
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-responder@edumetrica.mx')
 
 
 # Idioma y zona horaria.

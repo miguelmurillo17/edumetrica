@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Nueva contrasena - Edumetrica{% endblock %}
+
+{% block contenido %}
+<div class="caja-acceso">
+    {% if validlink %}
+    <h1 class="titulo-acceso">Nueva contrasena</h1>
+    <p class="subtitulo-acceso">Escribela dos veces para confirmar</p>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if form.non_field_errors %}
+        <div class="aviso-error">{{ form.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ form.new_password1.id_for_label }}">{{ form.new_password1.label }}</label>
+            {{ form.new_password1 }}
+            {{ form.new_password1.errors }}
+            {% if form.new_password1.help_text %}
+            <div class="ayuda">{{ form.new_password1.help_text|safe }}</div>
+            {% endif %}
+        </div>
+
+        <div class="campo">
+            <label for="{{ form.new_password2.id_for_label }}">{{ form.new_password2.label }}</label>
+            {{ form.new_password2 }}
+            {{ form.new_password2.errors }}
+        </div>
+
+        <button type="submit" class="boton-principal">Guardar contrasena</button>
+    </form>
+    {% else %}
+    <h1 class="titulo-acceso">Enlace vencido</h1>
+    <p class="subtitulo-acceso">
+        Este enlace ya se uso o dejo de ser valido. Pide uno nuevo para
+        continuar.
+    </p>
+
+    <p class="pie-acceso">
+        <a href="{% url 'usuarios:restablecer' %}">Pedir otro enlace</a>
+    </p>
+    {% endif %}
+</div>
+{% endblock %}

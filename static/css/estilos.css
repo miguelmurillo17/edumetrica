@@ -657,8 +657,9 @@ li.error .marca-resultado {
     margin-top: 0.4rem;
 }
 
-/* Boton de icono para las acciones de los listados (por ahora, editar).
-   Se ve como el lapiz solo, en el verde de la marca. */
+/* Boton de icono para las acciones de los listados: editar, quitar, etc.
+   Se ve solo el icono en el verde de la marca. Sirve igual en una liga que
+   en un boton, por eso se le quita el aspecto que el navegador les pone. */
 .boton-icono {
     display: inline-flex;
     align-items: center;
@@ -668,6 +669,11 @@ li.error .marca-resultado {
     padding: 0.2rem;
     border-radius: var(--radio);
     line-height: 0;
+    background: none;
+    border: none;
+    appearance: none;
+    font: inherit;
+    cursor: pointer;
 }
 
 .boton-icono:hover {
@@ -677,4 +683,51 @@ li.error .marca-resultado {
 /* Columna angosta para el boton de icono en las tablas */
 .columna-icono {
     width: 3rem;
+}
+
+/* Tabla de categorias con su numero de preguntas en la evaluacion */
+.tabla-categorias select,
+.tabla-categorias input[type="number"] {
+    width: 100%;
+    margin: 0;
+}
+
+.tabla-categorias .columna-numero {
+    width: 8rem;
+}
+
+/* La casilla de borrar de Django se esconde: el renglon se quita con el
+   boton del bote de basura, que es el que la marca. */
+.casilla-borrar {
+    display: none;
+}
+
+.boton-secundario {
+    background: none;
+    border: 1px solid var(--color-principal);
+    color: var(--color-principal);
+    padding: 0.45rem 0.9rem;
+    border-radius: var(--radio);
+    cursor: pointer;
+    margin-top: 0.6rem;
+}
+
+.boton-secundario:hover {
+    background-color: rgba(47, 111, 79, 0.12);
+}
+
+/* Enlace al pie de las pantallas de acceso y de restablecer contrasena */
+.pie-acceso {
+    text-align: center;
+    margin-top: 1.2rem;
+    margin-bottom: 0;
+}
+
+.pie-acceso a {
+    color: var(--color-principal);
+    text-decoration: none;
+}
+
+.pie-acceso a:hover {
+    text-decoration: underline;
 }

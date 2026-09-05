@@ -2,7 +2,7 @@
 
 from django.contrib import admin
 
-from .models import Grupo, Evaluacion, IntentoEvaluacion, RespuestaAlumno
+from .models import Grupo, Evaluacion, CategoriaEvaluacion, IntentoEvaluacion, RespuestaAlumno
 
 
 @admin.register(Grupo)
@@ -14,12 +14,19 @@ class GrupoAdmin(admin.ModelAdmin):
     filter_horizontal = ('alumnos', 'profesores')
 
 
+class CategoriaEvaluacionInline(admin.TabularInline):
+    """Tabla de categorias con su numero de preguntas dentro de la evaluacion."""
+    model = CategoriaEvaluacion
+    extra = 1
+
+
 @admin.register(Evaluacion)
 class EvaluacionAdmin(admin.ModelAdmin):
     list_display = ('titulo', 'grupo', 'materia', 'estado', 'fecha_inicio', 'fecha_fin')
     list_filter = ('estado', 'materia', 'grupo')
     search_fields = ('titulo',)
-    filter_horizontal = ('categorias', 'preguntas')
+    filter_horizontal = ('preguntas',)
+    inlines = [CategoriaEvaluacionInline]
 
 
 @admin.register(IntentoEvaluacion)

@@ -1,0 +1,24 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Restablecer contrasena - Edumetrica{% endblock %}
+
+{% block contenido %}
+<div class="caja-acceso">
+    <h1 class="titulo-acceso">Restablecer contrasena</h1>
+    <p class="subtitulo-acceso">Escribe tu correo y te enviamos las instrucciones</p>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+        <div class="campo">
+            <label for="{{ form.email.id_for_label }}">{{ form.email.label }}</label>
+            {{ form.email }}
+            {{ form.email.errors }}
+        </div>
+        <button type="submit" class="boton-principal">Enviar instrucciones</button>
+    </form>
+
+    <p class="pie-acceso">
+        <a href="{% url 'usuarios:inicio_sesion' %}">Regresar al acceso</a>
+    </p>
+</div>
+{% endblock %}

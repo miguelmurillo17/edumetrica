@@ -68,18 +68,15 @@ class Evaluacion(models.Model):
         on_delete=models.PROTECT,
         related_name='evaluaciones',
     )
-    # Categorias de las que se eligen las preguntas de la evaluacion.
-    categorias = models.ManyToManyField(
-        Categoria,
-        related_name='evaluaciones',
-    )
     # Preguntas concretas que se arman al momento de programar la evaluacion.
     preguntas = models.ManyToManyField(
         Pregunta,
         related_name='evaluaciones',
         blank=True,
     )
-    numero_preguntas = models.PositiveSmallIntegerField()
+    # Total de preguntas de la evaluacion. Se calcula sumando las de cada
+    # categoria elegida, se guarda para no recalcularlo en cada consulta.
+    numero_preguntas = models.PositiveSmallIntegerField(default=0)
     fecha_inicio = models.DateTimeField()
     fecha_fin = models.DateTimeField()
     estado = models.CharField(
@@ -105,6 +102,37 @@ class Evaluacion(models.Model):
         if self.estado == self.Estado.FINALIZADA:
             return False
         return self.fecha_inicio <= ahora <= self.fecha_fin
+
+
+class CategoriaEvaluacion(models.Model):
+    """Cuantas preguntas se toman de una categoria dentro de una evaluacion."""
+
+    evaluacion = models.ForeignKey(
+        Evaluacion,
+        on_delete=models.CASCADE,
+        related_name='categorias_elegidas',
+    )
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.PROTECT,
+        related_name='evaluaciones',
+    )
+    numero_preguntas = models.PositiveSmallIntegerField()
+
+    class Meta:
+        verbose_name = 'categoria de la evaluacion'
+        verbose_name_plural = 'categorias de la evaluacion'
+        # Una categoria no se puede repetir dentro de la misma evaluacion.
+        constraints = [
+            models.UniqueConstraint(
+                fields=['evaluacion', 'categoria'],
+                name='categoria_unica_por_evaluacion',
+            ),
+        ]
+        ordering = ['id']
+
+    def __str__(self):
+        return f'{self.categoria.nombre}: {self.numero_preguntas} preguntas'
 
 
 class IntentoEvaluacion(models.Model):

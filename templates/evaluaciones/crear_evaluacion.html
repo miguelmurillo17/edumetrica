@@ -2,6 +2,7 @@
 
 {% block titulo %}Programar evaluacion - Edumetrica{% endblock %}
 
+
 {% block contenido %}
 <section class="panel">
     <h1>Programar evaluacion</h1>
@@ -32,15 +33,70 @@
         </div>
 
         <div class="campo">
-            <label>{{ formulario.categorias.label }}</label>
-            <div class="lista-casillas">{{ formulario.categorias }}</div>
-            {{ formulario.categorias.errors }}
-        </div>
+            <label>Categorias y numero de preguntas</label>
+            <p class="ayuda">Agrega un renglon por cada categoria de la que quieras
+               sacar preguntas. Debe haber al menos uno.</p>
 
-        <div class="campo">
-            <label for="{{ formulario.numero_preguntas.id_for_label }}">{{ formulario.numero_preguntas.label }}</label>
-            {{ formulario.numero_preguntas }}
-            {{ formulario.numero_preguntas.errors }}
+            {% if filas.non_form_errors %}
+            <div class="aviso-error">{{ filas.non_form_errors }}</div>
+            {% endif %}
+
+            {{ filas.management_form }}
+
+            <table class="tabla tabla-categorias">
+                <thead>
+                    <tr>
+                        <th>Categoria</th>
+                        <th class="columna-numero">Preguntas</th>
+                        <th class="columna-icono"></th>
+                    </tr>
+                </thead>
+                <tbody id="renglones-categorias">
+                    {% for fila in filas %}
+                    <tr class="renglon-categoria">
+                        {{ fila.id }}
+                        <td>
+                            {{ fila.categoria }}
+                            {{ fila.categoria.errors }}
+                        </td>
+                        <td>
+                            {{ fila.numero_preguntas }}
+                            {{ fila.numero_preguntas.errors }}
+                        </td>
+                        <td>
+                            <span class="casilla-borrar">{{ fila.DELETE }}</span>
+                            <button type="button" class="boton-icono boton-quitar"
+                                    title="Quitar" aria-label="Quitar">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                                    <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="button" class="boton-secundario" id="agregar-categoria">
+                Agregar categoria
+            </button>
+
+            {# Molde que copia el navegador cada vez que se agrega un renglon. #}
+            <template id="molde-categoria">
+                <tr class="renglon-categoria">
+                    <td>{{ filas.empty_form.categoria }}</td>
+                    <td>{{ filas.empty_form.numero_preguntas }}</td>
+                    <td>
+                        <span class="casilla-borrar">{{ filas.empty_form.DELETE }}</span>
+                        <button type="button" class="boton-icono boton-quitar"
+                                title="Quitar" aria-label="Quitar">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                                <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            </template>
         </div>
 
         <div class="fila-doble">
@@ -62,4 +118,45 @@
         </div>
     </form>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Maneja la tabla de categorias: agregar renglones nuevos y quitar los
+    // capturados. Django numera los renglones con el prefijo "categorias_elegidas".
+    (function () {
+        const cuerpo = document.getElementById('renglones-categorias');
+        const molde = document.getElementById('molde-categoria');
+        const total = document.getElementById('id_categorias_elegidas-TOTAL_FORMS');
+
+        function conectarQuitar(renglon) {
+            const boton = renglon.querySelector('.boton-quitar');
+            if (!boton) {
+                return;
+            }
+            boton.addEventListener('click', function () {
+                const casilla = renglon.querySelector('input[type=checkbox][name$="-DELETE"]');
+                if (casilla) {
+                    // Al renglon que ya estaba guardado se le marca el borrado
+                    // y se esconde, para no descuadrar la numeracion de Django.
+                    casilla.checked = true;
+                }
+                renglon.hidden = true;
+            });
+        }
+
+        document.querySelectorAll('.renglon-categoria').forEach(conectarQuitar);
+
+        document.getElementById('agregar-categoria').addEventListener('click', function () {
+            const indice = parseInt(total.value, 10);
+            const html = molde.innerHTML.replace(/__prefix__/g, indice);
+            const contenedor = document.createElement('tbody');
+            contenedor.innerHTML = html.trim();
+            const renglon = contenedor.firstElementChild;
+            cuerpo.appendChild(renglon);
+            conectarQuitar(renglon);
+            total.value = indice + 1;
+        });
+    })();
+</script>
 {% endblock %}

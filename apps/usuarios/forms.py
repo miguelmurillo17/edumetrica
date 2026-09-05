@@ -1,6 +1,6 @@
 """Formularios relacionados con el acceso de las personas al sistema."""
 
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, SetPasswordForm
 
 
 class FormularioInicioSesion(AuthenticationForm):
@@ -19,3 +19,25 @@ class FormularioInicioSesion(AuthenticationForm):
         self.fields['password'].widget.attrs.update({
             'placeholder': 'Tu contrasena',
         })
+
+
+class FormularioCorreoRestablecer(PasswordResetForm):
+    """Pide el correo de la persona que olvido su contrasena."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['email'].label = 'Correo electronico'
+        self.fields['email'].widget.attrs.update({
+            'placeholder': 'correo@ejemplo.com',
+            'autofocus': True,
+        })
+
+
+class FormularioNuevaContrasena(SetPasswordForm):
+    """Recibe la contrasena nueva y su confirmacion."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['new_password1'].label = 'Contrasena nueva'
+        self.fields['new_password2'].label = 'Confirma la contrasena'
+        self.fields['new_password1'].widget.attrs.update({'autofocus': True})

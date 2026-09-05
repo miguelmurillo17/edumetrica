@@ -15,7 +15,9 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.catalogo.models import Materia, Categoria, Nivel, Pregunta, OpcionRespuesta
-from apps.evaluaciones.models import Grupo, Evaluacion, IntentoEvaluacion, RespuestaAlumno
+from apps.evaluaciones.models import (
+    Grupo, Evaluacion, CategoriaEvaluacion, IntentoEvaluacion, RespuestaAlumno,
+)
 
 Persona = get_user_model()
 
@@ -148,7 +150,8 @@ class Command(BaseCommand):
                     fecha_fin=ahora - timedelta(days=7, hours=-2),
                     estado=Evaluacion.Estado.FINALIZADA,
                 )
-                evaluacion.categorias.set(categorias)
+                # Las preguntas elegidas se reparten entre las categorias.
+                self.repartir_categorias(evaluacion, categorias, seleccion)
                 evaluacion.preguntas.set(seleccion)
 
                 self.generar_intentos(evaluacion, grupo, seleccion, ahora)
@@ -167,8 +170,23 @@ class Command(BaseCommand):
             fecha_fin=ahora + timedelta(days=3),
             estado=Evaluacion.Estado.PROGRAMADA,
         )
-        evaluacion.categorias.set(materia.categorias.all())
+        self.repartir_categorias(evaluacion, list(materia.categorias.all()), seleccion)
         evaluacion.preguntas.set(seleccion)
+
+    def repartir_categorias(self, evaluacion, categorias, seleccion):
+        """Crea los renglones de categorias contando las preguntas de cada una."""
+        conteo = {}
+        for pregunta in seleccion:
+            conteo[pregunta.categoria_id] = conteo.get(pregunta.categoria_id, 0) + 1
+
+        for categoria in categorias:
+            numero = conteo.get(categoria.id, 0)
+            if numero:
+                CategoriaEvaluacion.objects.create(
+                    evaluacion=evaluacion,
+                    categoria=categoria,
+                    numero_preguntas=numero,
+                )
 
     def generar_intentos(self, evaluacion, grupo, preguntas, ahora):
         """Crea un intento finalizado por alumno con respuestas segun su habilidad."""
