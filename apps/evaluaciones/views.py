@@ -173,7 +173,8 @@ def crear_evaluacion(request):
             for fila in evaluacion.categorias_elegidas.all():
                 preguntas += list(
                     Pregunta.objects
-                    .filter(activa=True, categoria=fila.categoria)
+                    .utilizables()
+                    .filter(categoria=fila.categoria)
                     .order_by('?')[:fila.numero_preguntas]
                 )
             evaluacion.preguntas.set(preguntas)

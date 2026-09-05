@@ -77,8 +77,91 @@ class Nivel(models.Model):
         return f'Nivel {self.numero} - {self.nombre}'
 
 
+class SolicitudGeneracion(models.Model):
+    """Registro de cada lote de preguntas que se le pidio a la inteligencia
+    artificial.
+
+    De aqui salen los numeros del capitulo de resultados: cuantas preguntas se
+    pidieron, cuantas llegaron, cuantas paso el verificador simbolico y cuantas
+    termino validando el profesor.
+    """
+
+    profesor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name='solicitudes_generacion',
+    )
+    materia = models.ForeignKey(
+        Materia,
+        on_delete=models.PROTECT,
+        related_name='solicitudes',
+    )
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.PROTECT,
+        related_name='solicitudes',
+    )
+    nivel = models.ForeignKey(
+        Nivel,
+        on_delete=models.PROTECT,
+        related_name='solicitudes',
+    )
+    cantidad_pedida = models.PositiveSmallIntegerField()
+    # Cuantas preguntas devolvio el modelo.
+    cantidad_recibida = models.PositiveSmallIntegerField(default=0)
+    # Cuantas de esas paso el verificador simbolico.
+    cantidad_aprobada = models.PositiveSmallIntegerField(default=0)
+    # Modelo y consumo, para poder reportar el costo del experimento.
+    modelo = models.CharField(max_length=60, blank=True)
+    tokens_entrada = models.PositiveIntegerField(default=0)
+    tokens_salida = models.PositiveIntegerField(default=0)
+    fecha = models.DateTimeField(auto_now_add=True)
+    # Si la peticion fallo se guarda el motivo en lugar de perderlo.
+    exitosa = models.BooleanField(default=False)
+    detalle_error = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'solicitud de generación'
+        verbose_name_plural = 'solicitudes de generación'
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f'{self.categoria.nombre} x{self.cantidad_pedida} ({self.fecha:%d/%m/%Y})'
+
+    @property
+    def cantidad_validada(self):
+        """Cuantas preguntas del lote termino validando el profesor.
+
+        Se cuenta al vuelo en lugar de guardarla, porque cambia cada vez que
+        el profesor revisa una pregunta y un contador guardado se desfasaria.
+        """
+        return self.preguntas.filter(estado=Pregunta.Estado.VALIDADA).count()
+
+
+class PreguntaQuerySet(models.QuerySet):
+    """Consultas propias de las preguntas."""
+
+    def utilizables(self):
+        """Las que pueden entrar a una evaluacion: activas y ya validadas.
+
+        Se concentra aqui para que el filtro sea uno solo. Antes vivia repetido
+        en el formulario y en la vista que arma la evaluacion, y era facil
+        cambiar uno y olvidar el otro.
+        """
+        return self.filter(activa=True, estado=Pregunta.Estado.VALIDADA)
+
+
 class Pregunta(models.Model):
     """Pregunta de opcion multiple que forma parte de las evaluaciones."""
+
+    class Origen(models.TextChoices):
+        MANUAL = 'manual', 'Capturada por el profesor'
+        IA = 'ia', 'Generada con inteligencia artificial'
+
+    class Estado(models.TextChoices):
+        BORRADOR = 'borrador', 'Borrador'
+        VALIDADA = 'validada', 'Validada'
+        DESCARTADA = 'descartada', 'Descartada'
 
     materia = models.ForeignKey(
         Materia,
@@ -108,6 +191,38 @@ class Pregunta(models.Model):
     fecha_creacion = models.DateTimeField(auto_now_add=True)
     activa = models.BooleanField(default=True)
 
+    # De donde salio la pregunta. Sirve para separar las metricas de la tesis.
+    origen = models.CharField(
+        max_length=10,
+        choices=Origen.choices,
+        default=Origen.MANUAL,
+    )
+    # Una pregunta nace en borrador a proposito: si alguna ruta nueva olvida
+    # marcarla, se queda fuera de las evaluaciones en lugar de colarse sin
+    # que nadie la haya revisado.
+    estado = models.CharField(
+        max_length=12,
+        choices=Estado.choices,
+        default=Estado.BORRADOR,
+    )
+    # Explicacion paso a paso que se le muestra al alumno al terminar.
+    procedimiento = models.TextField(blank=True)
+    # Dictamen del verificador simbolico. Queda en nulo cuando la pregunta no
+    # es de matematicas y por lo tanto no habia nada que comprobar.
+    verificada_simbolicamente = models.BooleanField(null=True, blank=True)
+    # Regla que fallo, cuando el verificador o el profesor la descartaron.
+    motivo_rechazo = models.TextField(blank=True)
+    # Lote del que salio, si se genero con inteligencia artificial.
+    solicitud = models.ForeignKey(
+        'SolicitudGeneracion',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='preguntas',
+    )
+
+    objects = PreguntaQuerySet.as_manager()
+
     class Meta:
         verbose_name = 'pregunta'
         verbose_name_plural = 'preguntas'
@@ -116,6 +231,11 @@ class Pregunta(models.Model):
     def __str__(self):
         # Se muestra solo el inicio del enunciado para que sea legible en listas.
         return self.enunciado[:60]
+
+    @property
+    def es_utilizable(self):
+        """Indica si la pregunta puede formar parte de una evaluacion."""
+        return self.activa and self.estado == self.Estado.VALIDADA
 
 
 class OpcionRespuesta(models.Model):

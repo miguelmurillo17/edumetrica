@@ -123,6 +123,10 @@ class Command(BaseCommand):
                     nivel=Nivel.objects.get(numero=random.randint(1, 6)),
                     enunciado=f'{categoria.nombre}: pregunta de ejemplo número {numero}',
                     creada_por=profesor,
+                    # Las de demostracion nacen validadas para que se puedan
+                    # usar en las evaluaciones de ejemplo.
+                    origen=Pregunta.Origen.MANUAL,
+                    estado=Pregunta.Estado.VALIDADA,
                 )
                 # La primera opcion siempre es la correcta.
                 OpcionRespuesta.objects.create(pregunta=pregunta, texto='Respuesta correcta', es_correcta=True)

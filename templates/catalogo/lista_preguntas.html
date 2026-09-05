@@ -18,6 +18,8 @@
                 <th>Materia</th>
                 <th>Categoría</th>
                 <th>Nivel</th>
+                <th>Estado</th>
+                <th>Origen</th>
             </tr>
         </thead>
         <tbody>
@@ -31,6 +33,12 @@
                 <td>{{ pregunta.materia.nombre }}</td>
                 <td>{{ pregunta.categoria.nombre }}</td>
                 <td>{{ pregunta.nivel.numero }}</td>
+                <td>
+                    <span class="etiqueta {% if pregunta.estado == 'validada' %}etiqueta-disponible{% elif pregunta.estado == 'borrador' %}etiqueta-proxima{% else %}etiqueta-cerrada{% endif %}">
+                        {{ pregunta.get_estado_display }}
+                    </span>
+                </td>
+                <td>{{ pregunta.get_origen_display }}</td>
             </tr>
             {% endfor %}
         </tbody>

@@ -39,6 +39,9 @@ def crear_pregunta(request):
             # La materia se deduce de la categoria elegida.
             pregunta.materia = pregunta.categoria.materia
             pregunta.creada_por = request.user
+            # La escribio una persona, asi que no necesita pasar por revision.
+            pregunta.origen = Pregunta.Origen.MANUAL
+            pregunta.estado = Pregunta.Estado.VALIDADA
             pregunta.save()
 
             # Una vez guardada la pregunta se le asocian sus opciones.

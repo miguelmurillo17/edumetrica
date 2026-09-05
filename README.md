@@ -42,7 +42,8 @@ compartidas `templates/` y `static/`.
 En el codigo se importan con la ruta completa, por ejemplo
 `from apps.catalogo.models import Pregunta`. La etiqueta interna de cada aplicacion
 sigue siendo la corta (`usuarios`, `catalogo`, `evaluaciones`, `reportes`), asi que
-comandos como `python manage.py test evaluaciones` no cambian.
+comandos como `python manage.py migrate catalogo` no cambian. En cambio
+`manage.py test` recibe la ruta del modulo: `python manage.py test apps.evaluaciones`.
 
 ## Instalacion
 
@@ -89,8 +90,8 @@ python manage.py makemigrations
 # Correr las pruebas
 python manage.py test
 
-# Correr las pruebas de una sola aplicacion
-python manage.py test evaluaciones
+# Correr las pruebas de una sola aplicacion (ruta de modulo, no etiqueta)
+python manage.py test apps.evaluaciones
 
 # Cargar datos de demostracion para el tablero: alumnos con edad y sexo,
 # dos grupos, dos materias, evaluaciones finalizadas con sus intentos y

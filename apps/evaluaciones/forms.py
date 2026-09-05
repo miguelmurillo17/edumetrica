@@ -123,8 +123,9 @@ class BaseCategoriasFormSet(BaseInlineFormSet):
                     f'La categoría {categoria.nombre} debe pedir al menos una pregunta.'
                 )
 
-            # Debe haber preguntas suficientes en el banco.
-            disponibles = Pregunta.objects.filter(activa=True, categoria=categoria).count()
+            # Debe haber preguntas suficientes en el banco. Solo cuentan las
+            # utilizables, es decir las que ya paso alguien por validacion.
+            disponibles = Pregunta.objects.utilizables().filter(categoria=categoria).count()
             if disponibles < numero:
                 raise forms.ValidationError(
                     f'La categoría {categoria.nombre} solo tiene {disponibles} '

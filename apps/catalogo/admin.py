@@ -2,7 +2,10 @@
 
 from django.contrib import admin
 
-from .models import Institucion, Materia, Categoria, Nivel, Pregunta, OpcionRespuesta
+from .models import (
+    Institucion, Materia, Categoria, Nivel, Pregunta, OpcionRespuesta,
+    SolicitudGeneracion,
+)
 from .forms import OpcionRespuestaForm, BaseOpcionesFormSet, NUMERO_OPCIONES
 
 
@@ -45,7 +48,23 @@ class OpcionRespuestaInline(admin.TabularInline):
 
 @admin.register(Pregunta)
 class PreguntaAdmin(admin.ModelAdmin):
-    list_display = ('enunciado', 'materia', 'categoria', 'nivel', 'activa')
-    list_filter = ('materia', 'categoria', 'nivel', 'activa')
+    list_display = ('enunciado', 'materia', 'categoria', 'nivel', 'estado', 'origen', 'activa')
+    list_filter = ('estado', 'origen', 'materia', 'categoria', 'nivel', 'activa')
     search_fields = ('enunciado',)
     inlines = [OpcionRespuestaInline]
+
+
+@admin.register(SolicitudGeneracion)
+class SolicitudGeneracionAdmin(admin.ModelAdmin):
+    """Consulta de los lotes pedidos a la inteligencia artificial."""
+    list_display = (
+        'fecha', 'profesor', 'categoria', 'nivel', 'cantidad_pedida',
+        'cantidad_recibida', 'cantidad_aprobada', 'cantidad_validada', 'exitosa',
+    )
+    list_filter = ('exitosa', 'materia', 'categoria', 'nivel')
+    date_hierarchy = 'fecha'
+    # El lote es un registro de lo que paso; no se edita a mano.
+    readonly_fields = [campo.name for campo in SolicitudGeneracion._meta.fields]
+
+    def has_add_permission(self, request):
+        return False
