@@ -1,0 +1,65 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Programar evaluacion - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Programar evaluacion</h1>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.titulo.id_for_label }}">{{ formulario.titulo.label }}</label>
+            {{ formulario.titulo }}
+            {{ formulario.titulo.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.grupo.id_for_label }}">{{ formulario.grupo.label }}</label>
+            {{ formulario.grupo }}
+            {{ formulario.grupo.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.materia.id_for_label }}">{{ formulario.materia.label }}</label>
+            {{ formulario.materia }}
+            {{ formulario.materia.errors }}
+        </div>
+
+        <div class="campo">
+            <label>{{ formulario.categorias.label }}</label>
+            <div class="lista-casillas">{{ formulario.categorias }}</div>
+            {{ formulario.categorias.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.numero_preguntas.id_for_label }}">{{ formulario.numero_preguntas.label }}</label>
+            {{ formulario.numero_preguntas }}
+            {{ formulario.numero_preguntas.errors }}
+        </div>
+
+        <div class="fila-doble">
+            <div class="campo">
+                <label for="{{ formulario.fecha_inicio.id_for_label }}">{{ formulario.fecha_inicio.label }}</label>
+                {{ formulario.fecha_inicio }}
+                {{ formulario.fecha_inicio.errors }}
+            </div>
+            <div class="campo">
+                <label for="{{ formulario.fecha_fin.id_for_label }}">{{ formulario.fecha_fin.label }}</label>
+                {{ formulario.fecha_fin }}
+                {{ formulario.fecha_fin.errors }}
+            </div>
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Programar</button>
+            <a class="enlace-cancelar" href="{% url 'evaluaciones:lista_evaluaciones' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

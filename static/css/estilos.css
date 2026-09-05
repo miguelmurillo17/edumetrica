@@ -1,0 +1,633 @@
+/* Estilos generales de Edumetrica */
+
+:root {
+    --color-principal: #2f6f4f;
+    --color-principal-claro: #3f9168;
+    --color-fondo: #f4f6f5;
+    --color-texto: #283330;
+    --color-borde: #d8e0dc;
+    --color-error: #c0392b;
+    --radio: 10px;
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: var(--color-fondo);
+    color: var(--color-texto);
+}
+
+/* Barra superior */
+.barra-superior {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: var(--color-principal);
+    color: white;
+    padding: 0.8rem 1.5rem;
+}
+
+.marca {
+    font-size: 1.3rem;
+    font-weight: bold;
+}
+
+.menu {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.usuario {
+    font-size: 0.95rem;
+}
+
+.boton-salir {
+    color: white;
+    text-decoration: none;
+    border: 1px solid rgba(255, 255, 255, 0.6);
+    padding: 0.35rem 0.8rem;
+    border-radius: var(--radio);
+    font-size: 0.9rem;
+    background: none;
+    cursor: pointer;
+    font-family: inherit;
+}
+
+.boton-salir:hover {
+    background-color: rgba(255, 255, 255, 0.15);
+}
+
+/* Contenido */
+.contenido {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 2rem 1.5rem;
+}
+
+/* Mensajes del sistema */
+.mensajes {
+    list-style: none;
+    padding: 0;
+}
+
+.mensaje {
+    padding: 0.7rem 1rem;
+    border-radius: var(--radio);
+    margin-bottom: 0.6rem;
+    background-color: #e6f0ea;
+}
+
+.mensaje.error {
+    background-color: #f8e4e2;
+    color: var(--color-error);
+}
+
+/* Caja de acceso */
+.caja-acceso {
+    max-width: 380px;
+    margin: 3rem auto;
+    background: white;
+    padding: 2.2rem;
+    border-radius: var(--radio);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+}
+
+.titulo-acceso {
+    text-align: center;
+    color: var(--color-principal);
+    margin: 0 0 0.3rem;
+}
+
+.subtitulo-acceso {
+    text-align: center;
+    color: #6c7a74;
+    margin-top: 0;
+    margin-bottom: 1.5rem;
+}
+
+.aviso-error {
+    background-color: #f8e4e2;
+    color: var(--color-error);
+    padding: 0.7rem 1rem;
+    border-radius: var(--radio);
+    margin-bottom: 1rem;
+    font-size: 0.9rem;
+}
+
+/* Formularios */
+.formulario .campo {
+    margin-bottom: 1.1rem;
+}
+
+.formulario label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.formulario input {
+    width: 100%;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    font-size: 1rem;
+}
+
+.formulario input:focus {
+    outline: none;
+    border-color: var(--color-principal-claro);
+}
+
+.boton-principal {
+    width: 100%;
+    background-color: var(--color-principal);
+    color: white;
+    border: none;
+    padding: 0.75rem;
+    border-radius: var(--radio);
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.boton-principal:hover {
+    background-color: var(--color-principal-claro);
+}
+
+/* Paneles */
+.panel h1 {
+    color: var(--color-principal);
+}
+
+.tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1.2rem;
+    margin-top: 1.5rem;
+}
+
+.tarjeta {
+    background: white;
+    padding: 1.3rem;
+    border-radius: var(--radio);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.tarjeta h2 {
+    margin-top: 0;
+    font-size: 1.15rem;
+    color: var(--color-principal);
+}
+
+/* Tarjetas que ademas son enlaces */
+a.tarjeta {
+    text-decoration: none;
+    color: inherit;
+    transition: box-shadow 0.15s ease;
+}
+
+a.tarjeta:hover {
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+}
+
+/* Campos de formulario adicionales */
+.formulario select,
+.formulario textarea {
+    width: 100%;
+    padding: 0.65rem 0.8rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    font-size: 1rem;
+    font-family: inherit;
+    background: white;
+}
+
+.formulario select:focus,
+.formulario textarea:focus {
+    outline: none;
+    border-color: var(--color-principal-claro);
+}
+
+.ayuda {
+    color: #6c7a74;
+    font-size: 0.9rem;
+}
+
+/* Bloque de cada opcion de respuesta */
+.opcion {
+    background: white;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 1rem 1.2rem;
+    margin-bottom: 1rem;
+}
+
+.numero-opcion {
+    display: inline-block;
+    font-weight: 600;
+    color: var(--color-principal);
+    margin-bottom: 0.6rem;
+}
+
+.campo-correcta {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: 0.4rem;
+}
+
+.campo-correcta input {
+    width: auto;
+}
+
+/* Acciones al pie de un formulario */
+.acciones {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-top: 1.2rem;
+}
+
+.acciones .boton-principal {
+    width: auto;
+    padding-left: 1.6rem;
+    padding-right: 1.6rem;
+}
+
+.enlace-cancelar {
+    color: #6c7a74;
+    text-decoration: none;
+}
+
+.enlace-cancelar:hover {
+    text-decoration: underline;
+}
+
+/* Encabezado de las listas con boton a la derecha */
+.encabezado-lista {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.boton-compacto {
+    width: auto;
+    padding: 0.55rem 1.1rem;
+    text-decoration: none;
+    display: inline-block;
+}
+
+/* Lista de casillas (categorias) */
+.lista-casillas {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    background: white;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 0.8rem 1rem;
+}
+
+.lista-casillas label {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 400;
+    margin: 0;
+}
+
+.lista-casillas input {
+    width: auto;
+}
+
+/* Dos campos lado a lado */
+.fila-doble {
+    display: flex;
+    gap: 1rem;
+}
+
+.fila-doble .campo {
+    flex: 1;
+}
+
+/* Tablas */
+.tabla {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: var(--radio);
+    overflow: hidden;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.tabla th,
+.tabla td {
+    text-align: left;
+    padding: 0.7rem 1rem;
+    border-bottom: 1px solid var(--color-borde);
+}
+
+.tabla th {
+    background-color: #eef3f0;
+    color: var(--color-principal);
+    font-size: 0.9rem;
+}
+
+.tabla tr:last-child td {
+    border-bottom: none;
+}
+
+/* Etiquetas de situacion en el panel del alumno */
+.etiqueta {
+    display: inline-block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    padding: 0.2rem 0.6rem;
+    border-radius: 999px;
+    margin-bottom: 0.6rem;
+}
+
+.etiqueta-disponible {
+    background-color: #d8f0e2;
+    color: var(--color-principal);
+}
+
+.etiqueta-finalizada {
+    background-color: #e2e8ee;
+    color: #3a536b;
+}
+
+.etiqueta-proxima {
+    background-color: #fdf0d5;
+    color: #8a6d1a;
+}
+
+.etiqueta-cerrada {
+    background-color: #f0e2e2;
+    color: #8a3a3a;
+}
+
+.datos-evaluacion {
+    color: #6c7a74;
+    font-size: 0.9rem;
+}
+
+.calificacion-mini {
+    font-weight: 600;
+    color: var(--color-principal);
+}
+
+/* Boton secundario */
+.boton-secundario {
+    background-color: white;
+    color: var(--color-texto);
+    border: 1px solid var(--color-borde);
+    padding: 0.55rem 1.1rem;
+    border-radius: var(--radio);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.boton-secundario:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+/* Aplicacion del alumno (quiz) */
+.quiz {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.quiz-aviso {
+    text-align: center;
+    padding: 2rem 0;
+}
+
+.quiz-encabezado h1 {
+    color: var(--color-principal);
+    margin-bottom: 0.3rem;
+}
+
+.barra-progreso {
+    background-color: #e2e8e5;
+    border-radius: 999px;
+    height: 10px;
+    overflow: hidden;
+    margin-top: 0.5rem;
+}
+
+.barra-avance {
+    background-color: var(--color-principal-claro);
+    height: 100%;
+    transition: width 0.25s ease;
+}
+
+.quiz-pregunta {
+    background: white;
+    border-radius: var(--radio);
+    padding: 1.5rem;
+    margin-top: 1.2rem;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.enunciado-quiz {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin-top: 0;
+}
+
+.img-pregunta {
+    max-width: 100%;
+    border-radius: var(--radio);
+    margin-bottom: 1rem;
+}
+
+.opciones-quiz {
+    display: flex;
+    flex-direction: column;
+    gap: 0.7rem;
+    margin-top: 1.2rem;
+}
+
+.opcion-quiz {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    text-align: left;
+    background: white;
+    border: 2px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 0.9rem 1.1rem;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+
+.opcion-quiz:hover {
+    border-color: var(--color-principal-claro);
+}
+
+.opcion-quiz.elegida {
+    border-color: var(--color-principal);
+    background-color: #eaf5ef;
+}
+
+.img-opcion {
+    max-height: 80px;
+    border-radius: 6px;
+}
+
+.quiz-navegacion {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 1.3rem;
+}
+
+/* Resultado de la evaluacion */
+.quiz-resultado {
+    text-align: center;
+}
+
+.calificacion-grande {
+    font-size: 3.5rem;
+    font-weight: bold;
+    color: var(--color-principal);
+    margin: 0.5rem 0;
+}
+
+.detalle-resultado {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    text-align: left;
+}
+
+.detalle-resultado li {
+    background: white;
+    border-left: 4px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 1rem 1.2rem;
+    margin-bottom: 0.8rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.detalle-resultado li.acierto {
+    border-left-color: var(--color-principal-claro);
+}
+
+.detalle-resultado li.error {
+    border-left-color: var(--color-error);
+}
+
+.marca-resultado {
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+li.acierto .marca-resultado {
+    color: var(--color-principal);
+}
+
+li.error .marca-resultado {
+    color: var(--color-error);
+}
+
+.detalle-enunciado {
+    font-weight: 600;
+    margin: 0.3rem 0;
+}
+
+.detalle-tu,
+.detalle-correcta {
+    font-size: 0.9rem;
+    margin: 0.2rem 0;
+    color: #5a6661;
+}
+
+.aviso-finalizada {
+    background-color: #fdf0d5;
+    color: #8a6d1a;
+    padding: 0.7rem 1rem;
+    border-radius: var(--radio);
+    font-size: 0.95rem;
+}
+
+/* Filtros del tablero */
+.filtros {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    background: white;
+    padding: 1.2rem;
+    border-radius: var(--radio);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.5rem;
+}
+
+.campo-filtro {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.campo-filtro label {
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+.campo-filtro select,
+.campo-filtro input {
+    padding: 0.5rem 0.7rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    font-size: 0.95rem;
+}
+
+.campo-filtro input[type="number"] {
+    width: 90px;
+}
+
+.acciones-filtro {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.8rem;
+}
+
+.numero-grande {
+    font-size: 2.5rem;
+    font-weight: bold;
+    color: var(--color-principal);
+    margin: 0.3rem 0 0;
+}
+
+/* Rejilla de graficas */
+.graficas {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+    margin-top: 1.5rem;
+}
+
+.grafica {
+    background: white;
+    padding: 1.2rem;
+    border-radius: var(--radio);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.grafica h3 {
+    margin-top: 0;
+    color: var(--color-principal);
+    font-size: 1.05rem;
+}

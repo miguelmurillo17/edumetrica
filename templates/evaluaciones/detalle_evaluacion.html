@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{{ evaluacion.titulo }} - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>{{ evaluacion.titulo }}</h1>
+    <p class="datos-evaluacion">
+        {{ evaluacion.grupo.nombre }} ·
+        {{ evaluacion.materia.nombre }} ·
+        {{ evaluacion.numero_preguntas }} preguntas
+    </p>
+    <p>
+        Estado: <strong>{{ evaluacion.get_estado_display }}</strong>
+        {% if evaluacion.finalizada_anticipadamente %}
+        <span class="etiqueta etiqueta-proxima">Finalizada anticipadamente</span>
+        {% endif %}
+    </p>
+    <p class="datos-evaluacion">
+        Del {{ evaluacion.fecha_inicio|date:"d/m/Y H:i" }}
+        al {{ evaluacion.fecha_fin|date:"d/m/Y H:i" }}
+    </p>
+
+    {% if evaluacion.estado != 'finalizada' %}
+    <form method="post" action="{% url 'evaluaciones:finalizar_evaluacion' evaluacion.id %}"
+          onsubmit="return confirm('Aun no termina el tiempo programado. Deseas finalizar la evaluacion para todo el grupo?');">
+        {% csrf_token %}
+        <button type="submit" class="boton-principal boton-compacto">Finalizar evaluacion</button>
+    </form>
+    {% endif %}
+
+    <h2>Avance del grupo</h2>
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Alumno</th>
+                <th>Situacion</th>
+                <th>Calificacion</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for fila in filas %}
+            <tr>
+                <td>{{ fila.alumno.nombre_completo }}</td>
+                <td>
+                    {% if fila.situacion == 'finalizado' %}Finalizado
+                    {% elif fila.situacion == 'en_curso' %}En curso
+                    {% else %}No iniciado{% endif %}
+                </td>
+                <td>
+                    {% if fila.intento and fila.intento.calificacion is not None %}
+                    {{ fila.intento.calificacion }}
+                    {% else %}-{% endif %}
+                </td>
+            </tr>
+            {% empty %}
+            <tr><td colspan="3">El grupo no tiene alumnos asignados.</td></tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <p><a class="enlace-cancelar" href="{% url 'evaluaciones:lista_evaluaciones' %}">Volver a mis evaluaciones</a></p>
+</section>
+{% endblock %}

@@ -1,0 +1,239 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{{ evaluacion.titulo }} - Edumetrica{% endblock %}
+
+{% block contenido %}
+<div id="app" class="quiz">
+
+    <!-- Mientras carga la evaluacion -->
+    <p v-if="estado === 'cargando'" class="quiz-aviso">Cargando evaluacion...</p>
+
+    <!-- Si ocurre algun error -->
+    <div v-else-if="estado === 'error'" class="quiz-aviso">
+        <p class="aviso-error">[[ mensajeError ]]</p>
+        <a class="boton-principal boton-compacto" :href="urlPanel">Volver</a>
+    </div>
+
+    <!-- Presentando la evaluacion -->
+    <div v-else-if="estado === 'presentando'">
+        <header class="quiz-encabezado">
+            <h1>[[ titulo ]]</h1>
+            <p>Pregunta [[ indice + 1 ]] de [[ preguntas.length ]]</p>
+            <div class="barra-progreso">
+                <div class="barra-avance" :style="{ width: progreso + '%' }"></div>
+            </div>
+        </header>
+
+        <div class="quiz-pregunta">
+            <p class="enunciado-quiz">[[ preguntaActual.enunciado ]]</p>
+            <img v-if="preguntaActual.imagen" :src="preguntaActual.imagen" class="img-pregunta">
+
+            <div class="opciones-quiz">
+                <button
+                    v-for="opcion in preguntaActual.opciones"
+                    :key="opcion.id"
+                    class="opcion-quiz"
+                    :class="{ elegida: respuestas[preguntaActual.id] === opcion.id }"
+                    @click="seleccionar(opcion.id)">
+                    <img v-if="opcion.imagen" :src="opcion.imagen" class="img-opcion">
+                    <span v-if="opcion.texto">[[ opcion.texto ]]</span>
+                </button>
+            </div>
+        </div>
+
+        <div class="quiz-navegacion">
+            <button class="boton-secundario" :disabled="indice === 0" @click="anterior">Anterior</button>
+            <button v-if="!esUltima" class="boton-principal boton-compacto" @click="siguiente">Siguiente</button>
+            <button v-else class="boton-principal boton-compacto" :disabled="enviando" @click="finalizar">
+                [[ enviando ? 'Enviando...' : 'Finalizar' ]]
+            </button>
+        </div>
+    </div>
+
+    <!-- Resultado final -->
+    <div v-else-if="estado === 'resultado'" class="quiz-resultado">
+        <h1>Resultado</h1>
+        <p v-if="finalizadaPorProfesor" class="aviso-finalizada">
+            El profesor finalizo la evaluacion. Este es tu resultado hasta ese momento.
+        </p>
+        <div class="calificacion-grande">[[ resultado.calificacion ]]</div>
+        <p>Acertaste [[ resultado.aciertos ]] de [[ resultado.total ]] preguntas.</p>
+
+        <ul class="detalle-resultado">
+            <li v-for="(fila, i) in resultado.detalle" :key="i" :class="fila.acerto ? 'acierto' : 'error'">
+                <span class="marca-resultado">[[ fila.acerto ? 'Correcta' : 'Incorrecta' ]]</span>
+                <p class="detalle-enunciado">[[ fila.enunciado ]]</p>
+                <p class="detalle-tu">Tu respuesta: [[ fila.tu_respuesta || 'Sin responder' ]]</p>
+                <p v-if="!fila.acerto" class="detalle-correcta">Respuesta correcta: [[ fila.respuesta_correcta ]]</p>
+            </li>
+        </ul>
+
+        <a class="boton-principal boton-compacto" :href="urlPanel">Volver a mis evaluaciones</a>
+    </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+<script>
+    // Datos que entrega Django a la aplicacion de Vue.
+    const EVALUACION_ID = {{ evaluacion.id }};
+    const CSRF_TOKEN = "{{ csrf_token }}";
+    const URL_PANEL = "{% url 'evaluaciones:panel_alumno' %}";
+
+    // Cada cuanto se le pregunta al servidor si el profesor ya finalizo.
+    const MILISEGUNDOS_SONDEO = 8000;
+
+    // Funcion comun para hablar con los endpoints del servidor.
+    async function peticion(url, cuerpo, metodo = 'POST') {
+        const opciones = {
+            method: metodo,
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': CSRF_TOKEN },
+            credentials: 'same-origin',
+        };
+        if (cuerpo) {
+            opciones.body = JSON.stringify(cuerpo);
+        }
+        const respuesta = await fetch(url, opciones);
+        const datos = await respuesta.json();
+        if (!respuesta.ok) {
+            throw new Error(datos.detalle || 'Ocurrio un error inesperado.');
+        }
+        return datos;
+    }
+
+    Vue.createApp({
+        delimiters: ['[[', ']]'],
+        data() {
+            return {
+                estado: 'cargando',
+                mensajeError: '',
+                urlPanel: URL_PANEL,
+                titulo: '',
+                preguntas: [],
+                indice: 0,
+                intentoId: null,
+                respuestas: {},
+                enviando: false,
+                resultado: null,
+                intervaloSondeo: null,
+                finalizadaPorProfesor: false,
+            };
+        },
+        computed: {
+            preguntaActual() {
+                return this.preguntas[this.indice];
+            },
+            esUltima() {
+                return this.indice === this.preguntas.length - 1;
+            },
+            progreso() {
+                if (this.preguntas.length === 0) {
+                    return 0;
+                }
+                return Math.round(((this.indice + 1) / this.preguntas.length) * 100);
+            },
+        },
+        methods: {
+            async iniciar() {
+                try {
+                    const datos = await peticion(`/api/alumno/evaluaciones/${EVALUACION_ID}/iniciar/`);
+                    this.intentoId = datos.intento_id;
+                    this.titulo = datos.titulo;
+                    this.preguntas = datos.preguntas;
+                    this.respuestas = datos.respuestas_previas || {};
+                    this.estado = 'presentando';
+                    // Se empieza a vigilar si el profesor finaliza la evaluacion.
+                    this.intervaloSondeo = setInterval(this.revisarEstado, MILISEGUNDOS_SONDEO);
+                } catch (error) {
+                    this.mensajeError = error.message;
+                    this.estado = 'error';
+                }
+            },
+            async seleccionar(opcionId) {
+                const preguntaId = this.preguntaActual.id;
+                this.respuestas[preguntaId] = opcionId;
+                try {
+                    const datos = await peticion(`/api/alumno/intentos/${this.intentoId}/responder/`, {
+                        pregunta: preguntaId,
+                        opcion: opcionId,
+                    });
+                    // El profesor pudo finalizar la evaluacion justo en ese momento.
+                    if (datos.finalizada) {
+                        this.finalizadaPorProfesor = true;
+                        await this.mostrarResultado();
+                    }
+                } catch (error) {
+                    this.mensajeError = error.message;
+                    this.estado = 'error';
+                }
+            },
+            siguiente() {
+                if (this.indice < this.preguntas.length - 1) {
+                    this.indice++;
+                }
+            },
+            anterior() {
+                if (this.indice > 0) {
+                    this.indice--;
+                }
+            },
+            async revisarEstado() {
+                // Si el profesor finalizo, se le muestra al alumno su resultado.
+                try {
+                    const datos = await peticion(`/api/alumno/intentos/${this.intentoId}/estado/`, null, 'GET');
+                    if (datos.finalizada) {
+                        this.finalizadaPorProfesor = true;
+                        await this.mostrarResultado();
+                    }
+                } catch (error) {
+                    // Si falla el sondeo no interrumpimos al alumno, se reintenta luego.
+                }
+            },
+            async mostrarResultado() {
+                this.detenerSondeo();
+                try {
+                    this.resultado = await peticion(`/api/alumno/intentos/${this.intentoId}/resultado/`, null, 'GET');
+                    this.estado = 'resultado';
+                } catch (error) {
+                    this.mensajeError = error.message;
+                    this.estado = 'error';
+                }
+            },
+            async finalizar() {
+                const respondidas = Object.keys(this.respuestas).length;
+                if (respondidas < this.preguntas.length) {
+                    const seguir = confirm('Tienes preguntas sin responder. Deseas finalizar de todos modos?');
+                    if (!seguir) {
+                        return;
+                    }
+                }
+                this.enviando = true;
+                this.detenerSondeo();
+                try {
+                    this.resultado = await peticion(`/api/alumno/intentos/${this.intentoId}/finalizar/`);
+                    this.estado = 'resultado';
+                } catch (error) {
+                    this.mensajeError = error.message;
+                    this.estado = 'error';
+                } finally {
+                    this.enviando = false;
+                }
+            },
+            detenerSondeo() {
+                if (this.intervaloSondeo) {
+                    clearInterval(this.intervaloSondeo);
+                    this.intervaloSondeo = null;
+                }
+            },
+        },
+        mounted() {
+            this.iniciar();
+        },
+        beforeUnmount() {
+            this.detenerSondeo();
+        },
+    }).mount('#app');
+</script>
+{% endblock %}

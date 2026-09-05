@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Evaluaciones - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="encabezado-lista">
+        <h1>Mis evaluaciones</h1>
+        <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:crear_evaluacion' %}">Programar evaluacion</a>
+    </div>
+
+    {% if evaluaciones %}
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Titulo</th>
+                <th>Grupo</th>
+                <th>Materia</th>
+                <th>Preguntas</th>
+                <th>Inicio</th>
+                <th>Estado</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for evaluacion in evaluaciones %}
+            <tr>
+                <td><a href="{% url 'evaluaciones:detalle_evaluacion' evaluacion.id %}">{{ evaluacion.titulo }}</a></td>
+                <td>{{ evaluacion.grupo.nombre }}</td>
+                <td>{{ evaluacion.materia.nombre }}</td>
+                <td>{{ evaluacion.numero_preguntas }}</td>
+                <td>{{ evaluacion.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                <td>{{ evaluacion.get_estado_display }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Aun no has programado evaluaciones. Programa la primera.</p>
+    {% endif %}
+</section>
+{% endblock %}

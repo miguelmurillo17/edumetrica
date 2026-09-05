@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Panel del profesor - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Panel del profesor</h1>
+    <p>Bienvenido, {{ user.nombre }}. Desde aqui podras programar evaluaciones
+       y dar seguimiento al avance de tus grupos.</p>
+
+    <div class="tarjetas">
+        <a class="tarjeta" href="{% url 'catalogo:lista_preguntas' %}">
+            <h2>Preguntas</h2>
+            <p>Da de alta y consulta el banco de preguntas.</p>
+        </a>
+        <div class="tarjeta">
+            <h2>Mis grupos</h2>
+            <p>Consulta los grupos que tienes asignados.</p>
+        </div>
+        <a class="tarjeta" href="{% url 'evaluaciones:lista_evaluaciones' %}">
+            <h2>Evaluaciones</h2>
+            <p>Programa una nueva evaluacion para un grupo.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'reportes:dashboard' %}">
+            <h2>Tablero</h2>
+            <p>Revisa estadisticas del desempeno de tus alumnos.</p>
+        </a>
+    </div>
+</section>
+{% endblock %}

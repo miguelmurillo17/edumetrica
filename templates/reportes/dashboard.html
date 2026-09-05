@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Tablero - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Tablero de desempeno</h1>
+
+    <!-- Filtros -->
+    <form method="get" class="filtros">
+        <div class="campo-filtro">
+            <label>Grupo</label>
+            <select name="grupo">
+                <option value="">Todos</option>
+                {% for grupo in grupos %}
+                <option value="{{ grupo.id }}" {% if filtros.grupo == grupo.id|stringformat:"s" %}selected{% endif %}>{{ grupo.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label>Materia</label>
+            <select name="materia">
+                <option value="">Todas</option>
+                {% for materia in materias %}
+                <option value="{{ materia.id }}" {% if filtros.materia == materia.id|stringformat:"s" %}selected{% endif %}>{{ materia.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label>Sexo</label>
+            <select name="sexo">
+                <option value="">Todos</option>
+                {% for valor, etiqueta in sexos %}
+                <option value="{{ valor }}" {% if filtros.sexo == valor %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label>Edad min</label>
+            <input type="number" name="edad_min" min="0" value="{{ filtros.edad_min }}">
+        </div>
+
+        <div class="campo-filtro">
+            <label>Edad max</label>
+            <input type="number" name="edad_max" min="0" value="{{ filtros.edad_max }}">
+        </div>
+
+        <div class="campo-filtro acciones-filtro">
+            <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
+            <a class="enlace-cancelar" href="{% url 'reportes:dashboard' %}">Limpiar</a>
+        </div>
+    </form>
+
+    <!-- Resumen -->
+    <div class="tarjetas">
+        <div class="tarjeta">
+            <h2>Evaluaciones presentadas</h2>
+            <p class="numero-grande">{{ resumen.total }}</p>
+        </div>
+        <div class="tarjeta">
+            <h2>Promedio general</h2>
+            <p class="numero-grande">{{ resumen.promedio|default:0|floatformat:2 }}</p>
+        </div>
+    </div>
+
+    <div class="acciones">
+        <a class="boton-secundario" href="{% url 'reportes:exportar_csv' %}?{{ request.GET.urlencode }}">Exportar CSV</a>
+    </div>
+
+    <!-- Graficas -->
+    <div class="graficas">
+        <div class="grafica">
+            <h3>Promedio por grupo</h3>
+            <canvas id="grafica-grupos"></canvas>
+        </div>
+        <div class="grafica">
+            <h3>Promedio por materia</h3>
+            <canvas id="grafica-materias"></canvas>
+        </div>
+        <div class="grafica">
+            <h3>Aciertos por categoria (%)</h3>
+            <canvas id="grafica-categorias"></canvas>
+        </div>
+    </div>
+</section>
+
+{{ datos_grupos|json_script:"datos-grupos" }}
+{{ datos_materias|json_script:"datos-materias" }}
+{{ datos_categorias|json_script:"datos-categorias" }}
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Los datos los entrega Django a traves de etiquetas json_script.
+    const datosGrupos = JSON.parse(document.getElementById('datos-grupos').textContent);
+    const datosMaterias = JSON.parse(document.getElementById('datos-materias').textContent);
+    const datosCategorias = JSON.parse(document.getElementById('datos-categorias').textContent);
+
+    const COLOR = '#3f9168';
+
+    // Dibuja una grafica de barras sencilla en el lienzo indicado.
+    function graficaBarras(idLienzo, datos, etiquetaSerie) {
+        const lienzo = document.getElementById(idLienzo);
+        new Chart(lienzo, {
+            type: 'bar',
+            data: {
+                labels: datos.etiquetas,
+                datasets: [{
+                    label: etiquetaSerie,
+                    data: datos.valores,
+                    backgroundColor: COLOR,
+                }],
+            },
+            options: {
+                scales: { y: { beginAtZero: true, max: 100 } },
+                plugins: { legend: { display: false } },
+            },
+        });
+    }
+
+    graficaBarras('grafica-grupos', datosGrupos, 'Promedio');
+    graficaBarras('grafica-materias', datosMaterias, 'Promedio');
+    graficaBarras('grafica-categorias', datosCategorias, 'Aciertos');
+</script>
+{% endblock %}

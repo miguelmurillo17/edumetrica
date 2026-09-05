@@ -1,0 +1,42 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Mis evaluaciones - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Hola, {{ user.nombre }}</h1>
+    <p>Estas son tus evaluaciones. Presenta las que esten disponibles.</p>
+
+    {% if evaluaciones %}
+    <div class="tarjetas">
+        {% for fila in evaluaciones %}
+        <div class="tarjeta">
+            <h2>{{ fila.evaluacion.titulo }}</h2>
+            <p class="datos-evaluacion">
+                {{ fila.evaluacion.materia.nombre }} ·
+                {{ fila.evaluacion.numero_preguntas }} preguntas
+            </p>
+
+            {% if fila.situacion == 'disponible' %}
+            <span class="etiqueta etiqueta-disponible">Disponible</span>
+            <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:presentar_evaluacion' fila.evaluacion.id %}">Presentar</a>
+
+            {% elif fila.situacion == 'finalizada' %}
+            <span class="etiqueta etiqueta-finalizada">Finalizada</span>
+            <p class="calificacion-mini">Calificacion: {{ fila.intento.calificacion }}</p>
+
+            {% elif fila.situacion == 'proxima' %}
+            <span class="etiqueta etiqueta-proxima">Programada</span>
+            <p class="datos-evaluacion">Inicia el {{ fila.evaluacion.fecha_inicio|date:"d/m/Y H:i" }}</p>
+
+            {% else %}
+            <span class="etiqueta etiqueta-cerrada">Cerrada</span>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <p>Todavia no tienes evaluaciones asignadas.</p>
+    {% endif %}
+</section>
+{% endblock %}

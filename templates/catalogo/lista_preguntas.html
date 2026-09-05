@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Preguntas - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="encabezado-lista">
+        <h1>Preguntas</h1>
+        <a class="boton-principal boton-compacto" href="{% url 'catalogo:crear_pregunta' %}">Nueva pregunta</a>
+    </div>
+
+    {% if preguntas %}
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Enunciado</th>
+                <th>Materia</th>
+                <th>Categoria</th>
+                <th>Nivel</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for pregunta in preguntas %}
+            <tr>
+                <td>{{ pregunta.enunciado|truncatechars:70 }}</td>
+                <td>{{ pregunta.materia.nombre }}</td>
+                <td>{{ pregunta.categoria.nombre }}</td>
+                <td>{{ pregunta.nivel.numero }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p>Todavia no hay preguntas registradas. Da de alta la primera.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Acceso - Edumetrica{% endblock %}
+
+{% block contenido %}
+<div class="caja-acceso">
+    <h1 class="titulo-acceso">Edumetrica</h1>
+    <p class="subtitulo-acceso">Ingresa con tu correo para continuar</p>
+
+    {% if form.errors %}
+    <div class="aviso-error">
+        El correo o la contrasena no son correctos. Intentalo de nuevo.
+    </div>
+    {% endif %}
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+        <div class="campo">
+            <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+            {{ form.username }}
+        </div>
+        <div class="campo">
+            <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+            {{ form.password }}
+        </div>
+        <button type="submit" class="boton-principal">Entrar</button>
+    </form>
+</div>
+{% endblock %}

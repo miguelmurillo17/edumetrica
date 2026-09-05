@@ -1,0 +1,39 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block titulo %}Edumetrica{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/estilos.css' %}">
+    {% block cabecera %}{% endblock %}
+</head>
+<body>
+    {% if user.is_authenticated %}
+    <header class="barra-superior">
+        <div class="marca">Edumetrica</div>
+        <nav class="menu">
+            <span class="usuario">{{ user.nombre_completo }}</span>
+            <form method="post" action="{% url 'usuarios:cerrar_sesion' %}" class="forma-salir">
+                {% csrf_token %}
+                <button type="submit" class="boton-salir">Salir</button>
+            </form>
+        </nav>
+    </header>
+    {% endif %}
+
+    <main class="contenido">
+        {% if messages %}
+        <ul class="mensajes">
+            {% for mensaje in messages %}
+            <li class="mensaje {{ mensaje.tags }}">{{ mensaje }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% block contenido %}{% endblock %}
+    </main>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

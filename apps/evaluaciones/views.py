@@ -1,0 +1,158 @@
+"""Vistas de los paneles de profesor y alumno, y de las evaluaciones."""
+
+from django.contrib import messages
+from django.contrib.auth.decorators import login_required
+from django.shortcuts import render, redirect, get_object_or_404
+from django.utils import timezone
+
+from apps.usuarios.models import Persona
+from apps.usuarios.decoradores import roles_permitidos
+from apps.catalogo.models import Pregunta
+
+from .models import Evaluacion, IntentoEvaluacion
+from .forms import EvaluacionForm
+
+
+@login_required
+def panel_profesor(request):
+    """Pantalla principal del profesor con sus evaluaciones y accesos."""
+    return render(request, 'evaluaciones/panel_profesor.html')
+
+
+@login_required
+def panel_alumno(request):
+    """Muestra al alumno sus evaluaciones y la situacion de cada una."""
+    alumno = request.user
+    evaluaciones = (
+        Evaluacion.objects
+        .filter(grupo__alumnos=alumno)
+        .select_related('grupo', 'materia')
+        .order_by('-fecha_inicio')
+    )
+
+    # Intentos del alumno indexados por evaluacion para saber cuales ya presento.
+    intentos = {
+        intento.evaluacion_id: intento
+        for intento in IntentoEvaluacion.objects.filter(alumno=alumno)
+    }
+
+    ahora = timezone.now()
+    lista = []
+    for evaluacion in evaluaciones:
+        intento = intentos.get(evaluacion.id)
+        if intento and intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
+            situacion = 'finalizada'
+        elif evaluacion.esta_disponible():
+            situacion = 'disponible'
+        elif evaluacion.fecha_inicio > ahora:
+            situacion = 'proxima'
+        else:
+            situacion = 'cerrada'
+        lista.append({'evaluacion': evaluacion, 'situacion': situacion, 'intento': intento})
+
+    return render(request, 'evaluaciones/panel_alumno.html', {'evaluaciones': lista})
+
+
+@login_required
+def presentar_evaluacion(request, evaluacion_id):
+    """Monta la aplicacion de Vue para que el alumno presente la evaluacion."""
+    evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id)
+    return render(request, 'evaluaciones/presentar_evaluacion.html', {'evaluacion': evaluacion})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.PROFESOR)
+def lista_evaluaciones(request):
+    """Muestra las evaluaciones que ha programado el profesor."""
+    evaluaciones = (
+        Evaluacion.objects
+        .filter(profesor=request.user)
+        .select_related('grupo', 'materia')
+    )
+    return render(request, 'evaluaciones/lista_evaluaciones.html', {'evaluaciones': evaluaciones})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.PROFESOR)
+def detalle_evaluacion(request, evaluacion_id):
+    """Muestra al profesor el avance de cada alumno en una evaluacion."""
+    evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id, profesor=request.user)
+
+    # Intentos indexados por alumno para cruzarlos con la lista del grupo.
+    intentos = {
+        intento.alumno_id: intento
+        for intento in evaluacion.intentos.select_related('alumno')
+    }
+
+    filas = []
+    for alumno in evaluacion.grupo.alumnos.all():
+        intento = intentos.get(alumno.id)
+        if intento is None:
+            situacion = 'no_iniciado'
+        elif intento.estado == IntentoEvaluacion.Estado.EN_CURSO:
+            situacion = 'en_curso'
+        else:
+            situacion = 'finalizado'
+        filas.append({'alumno': alumno, 'intento': intento, 'situacion': situacion})
+
+    return render(request, 'evaluaciones/detalle_evaluacion.html', {
+        'evaluacion': evaluacion,
+        'filas': filas,
+    })
+
+
+@login_required
+@roles_permitidos(Persona.Rol.PROFESOR)
+def finalizar_evaluacion(request, evaluacion_id):
+    """Finaliza la evaluacion y cierra los intentos que sigan en curso."""
+    evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id, profesor=request.user)
+
+    if request.method == 'POST' and evaluacion.estado != Evaluacion.Estado.FINALIZADA:
+        ahora = timezone.now()
+        # Si todavia no llegaba la hora de fin, fue una finalizacion anticipada.
+        evaluacion.estado = Evaluacion.Estado.FINALIZADA
+        evaluacion.finalizada_anticipadamente = ahora < evaluacion.fecha_fin
+        evaluacion.save()
+
+        # Cada alumno que seguia presentando se cierra con lo que llevaba.
+        for intento in evaluacion.intentos.filter(estado=IntentoEvaluacion.Estado.EN_CURSO):
+            intento.estado = IntentoEvaluacion.Estado.FINALIZADO
+            intento.fecha_fin = ahora
+            intento.calificacion = intento.calcular_calificacion()
+            intento.save()
+
+        messages.success(
+            request,
+            'La evaluacion se finalizo. Los alumnos en curso veran su resultado.',
+        )
+
+    return redirect('evaluaciones:detalle_evaluacion', evaluacion_id=evaluacion.id)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.PROFESOR)
+def crear_evaluacion(request):
+    """Programa una evaluacion y arma el conjunto de preguntas al azar."""
+    if request.method == 'POST':
+        formulario = EvaluacionForm(request.POST, profesor=request.user)
+        if formulario.is_valid():
+            evaluacion = formulario.save(commit=False)
+            evaluacion.profesor = request.user
+            evaluacion.save()
+            # Guarda las categorias elegidas en el formulario.
+            formulario.save_m2m()
+
+            # Se eligen al azar las preguntas entre las categorias elegidas.
+            preguntas = list(
+                Pregunta.objects
+                .filter(activa=True, categoria__in=evaluacion.categorias.all())
+                .order_by('?')[:evaluacion.numero_preguntas]
+            )
+            evaluacion.preguntas.set(preguntas)
+
+            messages.success(request, 'La evaluacion se programo correctamente.')
+            return redirect('evaluaciones:lista_evaluaciones')
+    else:
+        formulario = EvaluacionForm(profesor=request.user)
+
+    return render(request, 'evaluaciones/crear_evaluacion.html', {'formulario': formulario})

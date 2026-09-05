@@ -1,0 +1,75 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Nueva pregunta - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Nueva pregunta</h1>
+
+    <form method="post" enctype="multipart/form-data" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.categoria.id_for_label }}">{{ formulario.categoria.label }}</label>
+            {{ formulario.categoria }}
+            {{ formulario.categoria.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nivel.id_for_label }}">{{ formulario.nivel.label }}</label>
+            {{ formulario.nivel }}
+            {{ formulario.nivel.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.enunciado.id_for_label }}">{{ formulario.enunciado.label }}</label>
+            {{ formulario.enunciado }}
+            {{ formulario.enunciado.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.imagen.id_for_label }}">{{ formulario.imagen.label }}</label>
+            {{ formulario.imagen }}
+            {{ formulario.imagen.errors }}
+        </div>
+
+        <h2>Opciones de respuesta</h2>
+        <p class="ayuda">Captura las cuatro opciones y marca cual es la correcta.</p>
+
+        {% if opciones.non_form_errors %}
+        <div class="aviso-error">{{ opciones.non_form_errors }}</div>
+        {% endif %}
+
+        {{ opciones.management_form }}
+
+        {% for opcion in opciones %}
+        <div class="opcion">
+            <span class="numero-opcion">Opcion {{ forloop.counter }}</span>
+
+            {% if opcion.non_field_errors %}
+            <div class="aviso-error">{{ opcion.non_field_errors }}</div>
+            {% endif %}
+
+            <div class="campo">
+                <label>Texto</label>
+                {{ opcion.texto }}
+            </div>
+            <div class="campo">
+                <label>Imagen (opcional)</label>
+                {{ opcion.imagen }}
+            </div>
+            <label class="campo-correcta">{{ opcion.es_correcta }} Es la respuesta correcta</label>
+        </div>
+        {% endfor %}
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar pregunta</button>
+            <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
