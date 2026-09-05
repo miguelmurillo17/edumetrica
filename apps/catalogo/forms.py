@@ -63,6 +63,10 @@ class BaseOpcionesFormSet(BaseInlineFormSet):
         for formulario in self.forms:
             if not formulario.cleaned_data:
                 continue
+            # En el panel de administracion se pueden borrar opciones; las
+            # marcadas para eliminar no cuentan.
+            if formulario.cleaned_data.get('DELETE'):
+                continue
             texto = formulario.cleaned_data.get('texto')
             imagen = formulario.cleaned_data.get('imagen')
             if texto or imagen:

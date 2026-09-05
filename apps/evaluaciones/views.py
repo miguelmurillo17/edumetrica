@@ -9,7 +9,7 @@ from apps.usuarios.models import Persona
 from apps.usuarios.decoradores import roles_permitidos
 from apps.catalogo.models import Pregunta
 
-from .models import Evaluacion, IntentoEvaluacion
+from .models import Grupo, Evaluacion, IntentoEvaluacion
 from .forms import EvaluacionForm
 
 
@@ -58,6 +58,23 @@ def presentar_evaluacion(request, evaluacion_id):
     """Monta la aplicacion de Vue para que el alumno presente la evaluacion."""
     evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id)
     return render(request, 'evaluaciones/presentar_evaluacion.html', {'evaluacion': evaluacion})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.PROFESOR, Persona.Rol.ADMINISTRADOR)
+def lista_grupos(request):
+    """Muestra los grupos del profesor con los alumnos que tiene cada uno."""
+    grupos = (
+        Grupo.objects
+        .prefetch_related('alumnos', 'profesores')
+        .select_related('institucion')
+    )
+
+    # El profesor solo ve los grupos que le asignaron; el administrador todos.
+    if request.user.es_profesor:
+        grupos = grupos.filter(profesores=request.user)
+
+    return render(request, 'evaluaciones/lista_grupos.html', {'grupos': grupos})
 
 
 @login_required

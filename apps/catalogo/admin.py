@@ -3,6 +3,7 @@
 from django.contrib import admin
 
 from .models import Institucion, Materia, Categoria, Nivel, Pregunta, OpcionRespuesta
+from .forms import OpcionRespuestaForm, BaseOpcionesFormSet, NUMERO_OPCIONES
 
 
 @admin.register(Institucion)
@@ -34,7 +35,12 @@ class NivelAdmin(admin.ModelAdmin):
 class OpcionRespuestaInline(admin.TabularInline):
     """Permite editar las opciones de respuesta dentro de la misma pregunta."""
     model = OpcionRespuesta
-    extra = 4
+    form = OpcionRespuestaForm
+    # Se usa el mismo formset que el formulario del profesor para que la regla
+    # de las cuatro opciones con una sola correcta valga tambien aqui.
+    formset = BaseOpcionesFormSet
+    extra = NUMERO_OPCIONES
+    max_num = NUMERO_OPCIONES
 
 
 @admin.register(Pregunta)

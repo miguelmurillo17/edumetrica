@@ -14,6 +14,11 @@ def roles_permitidos(*roles):
         def envoltura(request, *args, **kwargs):
             if not request.user.is_authenticated:
                 return redirect('usuarios:inicio_sesion')
+            if request.user.is_superuser:
+                # El superusuario entra a cualquier vista sin importar su rol.
+                # Es coherente con el panel de Django, donde de todos modos
+                # tiene control total del sistema.
+                return vista(request, *args, **kwargs)
             if request.user.rol not in roles:
                 # Si el rol no esta permitido se niega el acceso.
                 raise PermissionDenied

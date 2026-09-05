@@ -25,6 +25,9 @@ Ingenieria de Software.
   monitorea el avance de sus alumnos.
 - **Alumno:** presenta las evaluaciones y recibe retroalimentacion inmediata.
 
+El superusuario no se limita a un rol: entra a cualquier pantalla del sistema y al
+iniciar sesion se le ofrecen los tres paneles para que elija desde cual trabajar.
+
 ## Aplicaciones del proyecto
 
 Las cuatro aplicaciones propias viven agrupadas dentro del paquete `apps/`, para

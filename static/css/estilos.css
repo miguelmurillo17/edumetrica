@@ -36,6 +36,13 @@ body {
     font-weight: bold;
 }
 
+/* Para el superusuario y el administrador la marca lleva al inicio, pero
+   debe verse igual que el texto normal de la barra: blanco y sin subrayado. */
+a.marca {
+    text-decoration: none;
+    color: inherit;
+}
+
 .menu {
     display: flex;
     align-items: center;
@@ -630,4 +637,44 @@ li.error .marca-resultado {
     margin-top: 0;
     color: var(--color-principal);
     font-size: 1.05rem;
+}
+
+/* Cada grupo de la pantalla "Mis grupos" con su lista de alumnos */
+.grupo {
+    background: white;
+    padding: 1.3rem;
+    border-radius: var(--radio);
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+    margin-bottom: 1.5rem;
+}
+
+.grupo h2 {
+    margin: 0;
+}
+
+.datos-grupo {
+    color: #555;
+    margin-top: 0.4rem;
+}
+
+/* Boton de icono para las acciones de los listados (por ahora, editar).
+   Se ve como el lapiz solo, en el verde de la marca. */
+.boton-icono {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--color-principal);
+    text-decoration: none;
+    padding: 0.2rem;
+    border-radius: var(--radio);
+    line-height: 0;
+}
+
+.boton-icono:hover {
+    background-color: rgba(47, 111, 79, 0.12);
+}
+
+/* Columna angosta para el boton de icono en las tablas */
+.columna-icono {
+    width: 3rem;
 }

@@ -2,7 +2,7 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import render, redirect
+from django.shortcuts import render, redirect, get_object_or_404
 
 from apps.usuarios.models import Persona
 from apps.usuarios.decoradores import roles_permitidos
@@ -52,4 +52,31 @@ def crear_pregunta(request):
         opciones = OpcionRespuestaFormSet()
 
     contexto = {'formulario': formulario, 'opciones': opciones}
-    return render(request, 'catalogo/crear_pregunta.html', contexto)
+    return render(request, 'catalogo/formulario_pregunta.html', contexto)
+
+
+@login_required
+@roles_permitidos(*ROLES_CATALOGO)
+def editar_pregunta(request, pregunta_id):
+    """Modifica una pregunta que ya existe junto con sus cuatro opciones."""
+    pregunta = get_object_or_404(Pregunta, id=pregunta_id)
+
+    if request.method == 'POST':
+        formulario = PreguntaForm(request.POST, request.FILES, instance=pregunta)
+        opciones = OpcionRespuestaFormSet(request.POST, request.FILES, instance=pregunta)
+
+        if formulario.is_valid() and opciones.is_valid():
+            pregunta = formulario.save(commit=False)
+            # La materia se vuelve a deducir por si le cambiaron la categoria.
+            pregunta.materia = pregunta.categoria.materia
+            pregunta.save()
+            opciones.save()
+
+            messages.success(request, 'La pregunta se actualizo correctamente.')
+            return redirect('catalogo:lista_preguntas')
+    else:
+        formulario = PreguntaForm(instance=pregunta)
+        opciones = OpcionRespuestaFormSet(instance=pregunta)
+
+    contexto = {'formulario': formulario, 'opciones': opciones, 'pregunta': pregunta}
+    return render(request, 'catalogo/formulario_pregunta.html', contexto)

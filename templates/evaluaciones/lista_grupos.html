@@ -1,0 +1,51 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Mis grupos - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Mis grupos</h1>
+
+    {% for grupo in grupos %}
+    <div class="grupo">
+        <div class="encabezado-lista">
+            <h2>{{ grupo.nombre }}</h2>
+            <span class="etiqueta {% if grupo.activo %}etiqueta-disponible{% else %}etiqueta-cerrada{% endif %}">
+                {% if grupo.activo %}Activo{% else %}Inactivo{% endif %}
+            </span>
+        </div>
+
+        <p class="datos-grupo">
+            Institucion: {{ grupo.institucion.nombre|default:"sin institucion" }} &middot;
+            Alumnos: {{ grupo.alumnos.all|length }} &middot;
+            Profesores: {% for profesor in grupo.profesores.all %}{{ profesor.nombre_completo }}{% if not forloop.last %}, {% endif %}{% empty %}sin profesores{% endfor %}
+        </p>
+
+        {% if grupo.alumnos.all %}
+        <table class="tabla">
+            <thead>
+                <tr>
+                    <th>Alumno</th>
+                    <th>Correo</th>
+                    <th>Sexo</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for alumno in grupo.alumnos.all %}
+                <tr>
+                    <td>{{ alumno.nombre_completo }}</td>
+                    <td>{{ alumno.correo }}</td>
+                    <td>{{ alumno.get_sexo_display|default:"sin registrar" }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        {% else %}
+        <p>Este grupo todavia no tiene alumnos asignados.</p>
+        {% endif %}
+    </div>
+    {% empty %}
+    <p>Todavia no tienes grupos asignados. El administrador es quien los asigna.</p>
+    {% endfor %}
+</section>
+{% endblock %}

@@ -13,6 +13,7 @@
     <table class="tabla">
         <thead>
             <tr>
+                <th class="columna-icono"></th>
                 <th>Enunciado</th>
                 <th>Materia</th>
                 <th>Categoria</th>
@@ -22,6 +23,10 @@
         <tbody>
             {% for pregunta in preguntas %}
             <tr>
+                <td>
+                    {% url 'catalogo:editar_pregunta' pregunta.id as url_editar %}
+                    {% include 'incluye/boton_editar.html' with url=url_editar %}
+                </td>
                 <td>{{ pregunta.enunciado|truncatechars:70 }}</td>
                 <td>{{ pregunta.materia.nombre }}</td>
                 <td>{{ pregunta.categoria.nombre }}</td>

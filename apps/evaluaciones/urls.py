@@ -12,6 +12,9 @@ urlpatterns = [
     path('profesor/', views.panel_profesor, name='panel_profesor'),
     path('alumno/', views.panel_alumno, name='panel_alumno'),
 
+    # Grupos del profesor
+    path('grupos/', views.lista_grupos, name='lista_grupos'),
+
     # Evaluaciones del profesor
     path('evaluaciones/', views.lista_evaluaciones, name='lista_evaluaciones'),
     path('evaluaciones/nueva/', views.crear_evaluacion, name='crear_evaluacion'),

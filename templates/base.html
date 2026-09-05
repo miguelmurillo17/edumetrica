@@ -11,7 +11,11 @@
 <body>
     {% if user.is_authenticated %}
     <header class="barra-superior">
+        {% if user.is_superuser or user.es_administrador %}
+        <a class="marca" href="{% url 'usuarios:inicio' %}">Edumetrica</a>
+        {% else %}
         <div class="marca">Edumetrica</div>
+        {% endif %}
         <nav class="menu">
             <span class="usuario">{{ user.nombre_completo }}</span>
             <form method="post" action="{% url 'usuarios:cerrar_sesion' %}" class="forma-salir">

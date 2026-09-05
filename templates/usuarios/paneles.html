@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Paneles del sistema - Edumetrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Paneles del sistema</h1>
+    <p>Bienvenido, {{ user.nombre }}. Como superusuario tienes acceso a los tres
+       paneles; elige desde cual quieres trabajar.</p>
+
+    <div class="tarjetas">
+        <a class="tarjeta" href="/admin/">
+            <h2>Administracion</h2>
+            <p>Alta de instituciones, usuarios, materias, categorias y niveles.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'evaluaciones:panel_profesor' %}">
+            <h2>Profesor</h2>
+            <p>Banco de preguntas, evaluaciones programadas y tablero.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'evaluaciones:panel_alumno' %}">
+            <h2>Alumno</h2>
+            <p>Evaluaciones por presentar y resultados de las ya finalizadas.</p>
+        </a>
+    </div>
+</section>
+{% endblock %}

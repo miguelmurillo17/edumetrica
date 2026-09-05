@@ -1,10 +1,10 @@
 {% extends 'base.html' %}
 
-{% block titulo %}Nueva pregunta - Edumetrica{% endblock %}
+{% block titulo %}{% if pregunta %}Editar pregunta{% else %}Nueva pregunta{% endif %} - Edumetrica{% endblock %}
 
 {% block contenido %}
 <section class="panel">
-    <h1>Nueva pregunta</h1>
+    <h1>{% if pregunta %}Editar pregunta{% else %}Nueva pregunta{% endif %}</h1>
 
     <form method="post" enctype="multipart/form-data" class="formulario">
         {% csrf_token %}
