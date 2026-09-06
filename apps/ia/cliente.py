@@ -105,22 +105,46 @@ def pedir_json(*, prompt_sistema, prompt_usuario, temperatura=None,
             f'Revisa {proveedor.variable_llave} en tu archivo .env.'
         ) from error
     except RateLimitError as error:
+        registro.warning('Cuota agotada en %s: %s', proveedor.clave, error)
         raise ErrorProveedorIA(
-            f'Se agotó la cuota de {proveedor.etiqueta}. En el plan gratuito '
-            f'los límites son por minuto y por día; espera un momento e '
-            f'inténtalo de nuevo.',
+            f'Se alcanzó el límite de solicitudes de {proveedor.etiqueta}. '
+            f'No es una falla de Edumétrica: el proveedor limita cuántas '
+            f'peticiones se le pueden hacer por minuto y por día, y en los '
+            f'planes gratuitos ese límite es más bajo. Espera unos minutos y '
+            f'vuelve a intentarlo.',
             reintentable=True,
             proveedor=proveedor.clave,
+            tipo=ErrorProveedorIA.CUOTA,
+            detalle=str(error),
         ) from error
-    except (Timeout, APIConnectionError, ServiceUnavailableError) as error:
+    except ServiceUnavailableError as error:
+        # El proveedor esta saturado. Es frecuente y pasa solo; lo importante
+        # es que el profesor entienda que el problema no es del sistema.
+        registro.warning('Proveedor saturado (%s): %s', proveedor.clave, error)
         raise ErrorProveedorIA(
-            f'No se pudo contactar a {proveedor.etiqueta}: {error}',
+            f'{proveedor.etiqueta} está saturado en este momento y no pudo '
+            f'atender la solicitud. No es una falla de Edumétrica: le están '
+            f'llegando más peticiones de las que alcanza a responder. Suele '
+            f'durar poco; vuelve a intentarlo en un momento.',
             reintentable=True,
             proveedor=proveedor.clave,
+            tipo=ErrorProveedorIA.SATURACION,
+            detalle=str(error),
+        ) from error
+    except (Timeout, APIConnectionError) as error:
+        registro.warning('Sin conexion con %s: %s', proveedor.clave, error)
+        raise ErrorProveedorIA(
+            f'No se pudo contactar a {proveedor.etiqueta}. Revisa tu conexión '
+            f'a internet y vuelve a intentarlo.',
+            reintentable=True,
+            proveedor=proveedor.clave,
+            tipo=ErrorProveedorIA.CONEXION,
+            detalle=str(error),
         ) from error
     except NotFoundError as error:
         # El identificador del modelo ya no existe. Los proveedores los retiran
         # cada tanto, asi que conviene decir exactamente que hay que cambiar.
+        registro.error('Modelo inexistente en %s: %s', proveedor.clave, error)
         raise ErrorProveedorIA(
             f'El modelo {modelo} ya no está disponible en '
             f'{proveedor.etiqueta}. Revisa el identificador vigente en '
@@ -128,6 +152,8 @@ def pedir_json(*, prompt_sistema, prompt_usuario, temperatura=None,
             f'Detalle: {error}',
             reintentable=False,
             proveedor=proveedor.clave,
+            tipo=ErrorProveedorIA.MODELO,
+            detalle=str(error),
         ) from error
     except BadRequestError as error:
         # Casi siempre: el modelo no existe, o el prompt es demasiado largo.

@@ -224,7 +224,11 @@ class FallasDelProveedorTest(SimpleTestCase):
             self.pedir()
 
         self.assertTrue(capturado.exception.reintentable)
-        self.assertIn('cuota', str(capturado.exception).lower())
+        self.assertEqual(capturado.exception.tipo, ErrorProveedorIA.CUOTA)
+        self.assertIn('límite de solicitudes', str(capturado.exception).lower())
+        # El mensaje no debe dar por hecho que el plan es gratuito: los planes
+        # de pago tambien tienen limite, solo que mas alto.
+        self.assertNotIn('cuota gratuita', str(capturado.exception).lower())
 
     @patch('apps.ia.cliente.completion')
     def test_la_llave_rechazada_es_error_de_configuracion(self, doble):
@@ -237,6 +241,46 @@ class FallasDelProveedorTest(SimpleTestCase):
         # No es ErrorProveedorIA: reintentar no sirve de nada.
         with self.assertRaises(ErrorConfiguracionIA):
             self.pedir()
+
+    @patch('apps.ia.cliente.completion')
+    def test_la_saturacion_se_explica_sin_volcar_el_json(self, doble):
+        # Lo que el profesor lee no debe parecer que el sistema se rompio.
+        from litellm.exceptions import ServiceUnavailableError
+
+        doble.side_effect = ServiceUnavailableError(
+            message='{"error": {"code": 503, "message": "high demand"}}',
+            llm_provider='gemini', model='gemini/gemini-3.6-flash',
+        )
+        with self.assertRaises(ErrorProveedorIA) as capturado:
+            self.pedir()
+
+        error = capturado.exception
+        mensaje = str(error)
+        self.assertEqual(error.tipo, ErrorProveedorIA.SATURACION)
+        self.assertTrue(error.reintentable)
+        # Dice de quien es el problema...
+        self.assertIn('no es una falla de edumétrica', mensaje.lower())
+        self.assertIn('saturado', mensaje.lower())
+        # ...y no le vuelca el JSON crudo del proveedor.
+        self.assertNotIn('503', mensaje)
+        self.assertNotIn('{', mensaje)
+        # El detalle tecnico si queda disponible, para la bitacora.
+        self.assertIn('503', error.detalle)
+
+    @patch('apps.ia.cliente.completion')
+    def test_la_cuota_agotada_tambien_se_explica(self, doble):
+        from litellm.exceptions import RateLimitError
+
+        doble.side_effect = RateLimitError(
+            message='quota exceeded', llm_provider='gemini',
+            model='gemini/gemini-3.6-flash',
+        )
+        with self.assertRaises(ErrorProveedorIA) as capturado:
+            self.pedir()
+
+        error = capturado.exception
+        self.assertEqual(error.tipo, ErrorProveedorIA.CUOTA)
+        self.assertIn('no es una falla de edumétrica', str(error).lower())
 
     @patch('apps.ia.cliente.completion')
     def test_el_modelo_inexistente_no_es_reintentable(self, doble):

@@ -85,7 +85,10 @@ El panel de administracion queda disponible en http://127.0.0.1:8000/admin/
 
 El acceso al proveedor pasa por LiteLLM, asi que cambiar de proveedor es editar
 el archivo `.env` y no el codigo. El proveedor por omision es Google AI Studio
-(Gemini) en su plan gratuito; tambien estan configurados Groq y DeepSeek.
+(Gemini), que hoy se usa en su plan gratuito; tambien estan configurados Groq y
+DeepSeek. El plan gratuito es comodo para desarrollar, pero sus solicitudes se
+atienden con menor prioridad y el proveedor responde 503 con cierta frecuencia;
+pasar a un plan de pago no requiere cambios de codigo, solo del `.env`.
 
 Copia las variables desde `.env.example` y pon la llave del proveedor que vayas
 a usar. Para probar desde la consola, sin guardar nada en la base de datos:
