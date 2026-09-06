@@ -6,7 +6,23 @@
 <section class="panel">
     <div class="encabezado-lista">
         <h1>Preguntas</h1>
-        <a class="boton-principal boton-compacto" href="{% url 'catalogo:crear_pregunta' %}">Nueva pregunta</a>
+        <div class="acciones">
+            {% if hay_ia %}
+            <a class="boton-secundario boton-compacto" href="{% url 'catalogo:generar_pregunta' %}">Generar con IA</a>
+            {% endif %}
+            <a class="boton-principal boton-compacto" href="{% url 'catalogo:crear_pregunta' %}">Nueva pregunta</a>
+        </div>
+    </div>
+
+    <div class="filtros-lista">
+        <span>Ver:</span>
+        <a class="{% if not estado %}filtro-activo{% endif %}" href="{% url 'catalogo:lista_preguntas' %}">Todas</a>
+        {% for clave, etiqueta in estados %}
+        <a class="{% if estado == clave %}filtro-activo{% endif %}" href="?estado={{ clave }}">{{ etiqueta }}</a>
+        {% endfor %}
+        {% if borradores %}
+        <span class="ayuda">{{ borradores }} en espera de revisión.</span>
+        {% endif %}
     </div>
 
     {% if preguntas %}
@@ -38,11 +54,18 @@
                         {{ pregunta.get_estado_display }}
                     </span>
                 </td>
-                <td>{{ pregunta.get_origen_display }}</td>
+                <td>
+                    {{ pregunta.get_origen_display }}
+                    {% if pregunta.origen == 'ia' %}
+                    <a href="{% url 'catalogo:revisar_pregunta' pregunta.id %}">Revisar</a>
+                    {% endif %}
+                </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
+    {% elif estado %}
+    <p>No hay preguntas en ese estado.</p>
     {% else %}
     <p>Todavía no hay preguntas registradas. Da de alta la primera.</p>
     {% endif %}

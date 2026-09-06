@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Generando pregunta - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+
+    {% if situacion.estado == 'en_proceso' %}
+    <h1>Generando la pregunta</h1>
+    <p>
+        Se le está pidiendo a la inteligencia artificial una pregunta de
+        <strong>{{ solicitud.categoria.nombre }}</strong>
+        ({{ solicitud.categoria.materia.nombre }}), nivel
+        {{ solicitud.nivel.numero }}.
+    </p>
+    <p class="ayuda">
+        Suele tardar unos veinte segundos. Si el proveedor está ocupado puede
+        llegar al minuto. No cierres esta página: se actualiza sola en cuanto
+        termine.
+    </p>
+    <p class="espera-tiempo">Llevas <span id="segundos">0</span> segundos esperando.</p>
+
+    {% else %}
+    <h1>No se pudo generar la pregunta</h1>
+
+    <div class="aviso-error">{{ situacion.mensaje }}</div>
+
+    {% if situacion.tipo == 'saturacion' or situacion.tipo == 'cuota' %}
+    <p class="ayuda">
+        Tu solicitud quedó registrada como intento fallido, así que cuenta para
+        el límite por hora aunque no se haya generado nada.
+    </p>
+    {% elif situacion.tipo == 'modelo' %}
+    <p class="ayuda">
+        Esto no se arregla reintentando: hay que ajustar la configuración del
+        servidor. Avisa al administrador.
+    </p>
+    {% endif %}
+
+    <div class="acciones">
+        {% if situacion.reintentable %}
+        <a class="boton-principal boton-compacto" href="{% url 'catalogo:generar_pregunta' %}">Intentar de nuevo</a>
+        {% endif %}
+        <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Volver a las preguntas</a>
+    </div>
+    {% endif %}
+
+</section>
+{% endblock %}
+
+{% block scripts %}
+{% if situacion.estado == 'en_proceso' %}
+<script>
+    // La generacion corre en un hilo del servidor, asi que esta pantalla
+    // pregunta cada dos segundos si ya termino. Es el mismo trato que usa la
+    // pantalla del alumno para enterarse de que el profesor cerro la
+    // evaluacion: sondeo, porque el proyecto no tiene WebSockets.
+    (function () {
+        const urlEstado = "{% url 'catalogo:estado_generacion' solicitud.id %}";
+        const marcador = document.getElementById('segundos');
+        let transcurridos = 0;
+
+        setInterval(function () {
+            transcurridos += 1;
+            marcador.textContent = transcurridos;
+        }, 1000);
+
+        setInterval(function () {
+            fetch(urlEstado, {headers: {'X-Requested-With': 'XMLHttpRequest'}})
+                .then(function (respuesta) { return respuesta.json(); })
+                .then(function (datos) {
+                    // La vista decide a donde ir segun como haya terminado:
+                    // aqui solo hace falta volver a pedirla.
+                    if (datos.estado !== 'en_proceso') {
+                        window.location.reload();
+                    }
+                })
+                .catch(function () {
+                    // Un sondeo perdido no es motivo de alarma: el siguiente
+                    // vuelve a preguntar.
+                });
+        }, 2000);
+    })();
+</script>
+{% endif %}
+{% endblock %}

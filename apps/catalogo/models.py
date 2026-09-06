@@ -112,6 +112,11 @@ class SolicitudGeneracion(models.Model):
         on_delete=models.PROTECT,
         related_name='solicitudes',
     )
+    class Estado(models.TextChoices):
+        EN_PROCESO = 'en_proceso', 'En proceso'
+        EXITOSA = 'exitosa', 'Exitosa'
+        FALLIDA = 'fallida', 'Fallida'
+
     cantidad_pedida = models.PositiveSmallIntegerField()
     # Cuantas preguntas devolvio el modelo.
     cantidad_recibida = models.PositiveSmallIntegerField(default=0)
@@ -122,8 +127,21 @@ class SolicitudGeneracion(models.Model):
     tokens_entrada = models.PositiveIntegerField(default=0)
     tokens_salida = models.PositiveIntegerField(default=0)
     fecha = models.DateTimeField(auto_now_add=True)
-    # Si la peticion fallo se guarda el motivo en lugar de perderlo.
-    exitosa = models.BooleanField(default=False)
+    # La solicitud nace en proceso porque la llamada al proveedor corre en un
+    # hilo aparte, y la pantalla del profesor sondea este campo para saber si
+    # ya termino. Un solo campo dice las tres cosas; con un booleano "exitosa"
+    # no se podria distinguir "fallo" de "todavia no acaba".
+    estado = models.CharField(
+        max_length=12,
+        choices=Estado.choices,
+        default=Estado.EN_PROCESO,
+    )
+    # Cuando falla se guardan por separado el tipo de falla y el mensaje ya
+    # redactado que si puede leer el profesor.
+    tipo_error = models.CharField(max_length=20, blank=True)
+    mensaje_error = models.TextField(blank=True)
+    # El texto crudo del proveedor. Es para la bitacora: nunca se muestra en
+    # pantalla, porque un volcado de JSON hace pensar que el sistema se rompio.
     detalle_error = models.TextField(blank=True)
 
     class Meta:

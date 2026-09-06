@@ -112,7 +112,7 @@ class GenerarPreguntaTest(TestCase):
         self.assertEqual(solicitud.tokens_entrada, 771)
         self.assertEqual(solicitud.tokens_salida, 976)
         self.assertEqual(solicitud.modelo, 'gemini/gemini-3.6-flash')
-        self.assertTrue(solicitud.exitosa)
+        self.assertEqual(solicitud.estado, SolicitudGeneracion.Estado.EXITOSA)
         self.assertEqual(solicitud.cantidad_pedida, 1)
         self.assertEqual(solicitud.cantidad_recibida, 1)
         self.assertEqual(solicitud.cantidad_aprobada, 1)
@@ -127,8 +127,8 @@ class GenerarPreguntaTest(TestCase):
             self.generar()
 
         solicitud = SolicitudGeneracion.objects.get()
-        self.assertFalse(solicitud.exitosa)
-        self.assertIn('cuota', solicitud.detalle_error)
+        self.assertEqual(solicitud.estado, SolicitudGeneracion.Estado.FALLIDA)
+        self.assertIn('cuota', solicitud.mensaje_error)
         self.assertEqual(Pregunta.objects.count(), 0)
 
     @patch('apps.catalogo.servicios.generar_preguntas')

@@ -731,3 +731,79 @@ li.error .marca-resultado {
 .pie-acceso a:hover {
     text-decoration: underline;
 }
+
+/* Dictamen del verificador simbolico en la pantalla de revision */
+.dictamen {
+    border-radius: var(--radio);
+    padding: 1rem 1.2rem;
+    margin: 1.2rem 0;
+    border-left: 4px solid var(--color-borde);
+    background-color: #f6f7f7;
+}
+
+.dictamen h2 {
+    margin: 0 0 0.4rem;
+    font-size: 1.05rem;
+}
+
+.dictamen p {
+    margin: 0.3rem 0;
+    font-size: 0.95rem;
+}
+
+.dictamen-aprobada {
+    border-left-color: var(--color-principal);
+    background-color: #e8f3ee;
+}
+
+.dictamen-rechazada {
+    border-left-color: var(--color-error);
+    background-color: #f7ecec;
+}
+
+.dictamen-sin-verificar {
+    border-left-color: #c9a227;
+    background-color: #fdf7e3;
+}
+
+.motivo-rechazo {
+    font-weight: 600;
+}
+
+.procedimiento {
+    background-color: white;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    padding: 0.9rem 1.1rem;
+    line-height: 1.5;
+}
+
+/* Pantalla de espera de la generacion */
+.espera-tiempo {
+    color: #6c7a74;
+    font-size: 0.9rem;
+}
+
+/* Filtro por estado en el listado de preguntas */
+.filtros-lista {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 1rem 0;
+    font-size: 0.9rem;
+}
+
+.filtros-lista a {
+    color: #6c7a74;
+    text-decoration: none;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    background-color: white;
+}
+
+.filtros-lista a.filtro-activo {
+    color: white;
+    background-color: var(--color-principal);
+    border-color: var(--color-principal);
+}

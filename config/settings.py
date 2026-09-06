@@ -162,8 +162,19 @@ AI_MODEL = config('AI_MODEL', default='') or None
 
 AI_TEMPERATURE = config('AI_TEMPERATURE', default=0.7, cast=float)
 AI_MAX_TOKENS = config('AI_MAX_TOKENS', default=4096, cast=int)
-AI_TIMEOUT = config('AI_TIMEOUT', default=60, cast=int)
+# La generacion corre en un hilo aparte, asi que el corte de treinta segundos
+# de un servidor de produccion ya no manda; lo que manda es la paciencia del
+# profesor mirando la pantalla de espera. Con un reintento, el peor caso son
+# dos intentos de treinta segundos.
+AI_TIMEOUT = config('AI_TIMEOUT', default=30, cast=int)
 AI_MAX_RETRIES = config('AI_MAX_RETRIES', default=1, cast=int)
+
+# Cuantas generaciones puede pedir un profesor por hora. La cuota es de la
+# institucion y no de cada usuario: sin este tope, un profesor la agota para
+# todos. Se cuentan todas las solicitudes, salgan bien o mal, porque las dos
+# tocaron al proveedor. Es un ajuste y no un numero escrito en el codigo para
+# poder subirlo el dia de la demostracion.
+AI_LIMITE_POR_HORA = config('AI_LIMITE_POR_HORA', default=20, cast=int)
 
 # Se leen todas, pero solo se exige la del proveedor activo y hasta el momento
 # de la llamada, para que el sistema arranque sin ninguna configurada.

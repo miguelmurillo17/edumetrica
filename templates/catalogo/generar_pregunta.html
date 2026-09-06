@@ -1,0 +1,41 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Generar pregunta - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <h1>Generar una pregunta</h1>
+    <p class="ayuda">
+        La inteligencia artificial propone la pregunta, el sistema comprueba
+        su aritmética y tú decides si entra al banco. Se genera una a la vez.
+    </p>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        <div class="campo">
+            <label for="{{ formulario.categoria.id_for_label }}">{{ formulario.categoria.label }}</label>
+            {{ formulario.categoria }}
+            <p class="ayuda">{{ formulario.categoria.help_text }}</p>
+            {{ formulario.categoria.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nivel.id_for_label }}">{{ formulario.nivel.label }}</label>
+            {{ formulario.nivel }}
+            {{ formulario.nivel.errors }}
+        </div>
+
+        <p class="ayuda">
+            Te quedan {{ restantes }} de {{ limite }} generaciones en esta hora.
+            El límite existe porque la cuota del proveedor la comparte toda la
+            institución.
+        </p>
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Generar pregunta</button>
+            <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

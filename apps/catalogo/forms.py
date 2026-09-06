@@ -14,9 +14,10 @@ class PreguntaForm(forms.ModelForm):
 
     class Meta:
         model = Pregunta
-        fields = ['categoria', 'nivel', 'enunciado', 'imagen']
+        fields = ['categoria', 'nivel', 'enunciado', 'procedimiento', 'imagen']
         widgets = {
             'enunciado': forms.Textarea(attrs={'rows': 3}),
+            'procedimiento': forms.Textarea(attrs={'rows': 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -29,7 +30,37 @@ class PreguntaForm(forms.ModelForm):
         self.fields['categoria'].label = 'Categoría'
         self.fields['nivel'].label = 'Nivel'
         self.fields['enunciado'].label = 'Enunciado de la pregunta'
+        self.fields['procedimiento'].label = 'Procedimiento (opcional)'
+        self.fields['procedimiento'].help_text = (
+            'Los pasos para llegar al resultado. El alumno los ve al terminar '
+            'la evaluación, solo en las preguntas que falló.'
+        )
         self.fields['imagen'].label = 'Imagen de la pregunta (opcional)'
+
+
+class GenerarPreguntaForm(forms.Form):
+    """Pide la categoria y el nivel de la pregunta que se va a generar.
+
+    No es un ModelForm: lo que se captura aqui no se guarda tal cual, sino que
+    viaja al proveedor y regresa convertido en una pregunta.
+    """
+
+    categoria = forms.ModelChoiceField(
+        queryset=Categoria.objects.none(),
+        label='Categoría',
+        help_text='La materia se toma de la categoría que elijas.',
+    )
+    nivel = forms.ModelChoiceField(
+        queryset=Nivel.objects.none(),
+        label='Nivel de dificultad',
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['categoria'].queryset = (
+            Categoria.objects.filter(activa=True).select_related('materia')
+        )
+        self.fields['nivel'].queryset = Nivel.objects.all()
 
 
 class OpcionRespuestaForm(forms.ModelForm):

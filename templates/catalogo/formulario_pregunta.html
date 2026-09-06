@@ -32,6 +32,13 @@
         </div>
 
         <div class="campo">
+            <label for="{{ formulario.procedimiento.id_for_label }}">{{ formulario.procedimiento.label }}</label>
+            {{ formulario.procedimiento }}
+            <p class="ayuda">{{ formulario.procedimiento.help_text }}</p>
+            {{ formulario.procedimiento.errors }}
+        </div>
+
+        <div class="campo">
             <label for="{{ formulario.imagen.id_for_label }}">{{ formulario.imagen.label }}</label>
             {{ formulario.imagen }}
             {{ formulario.imagen.errors }}
