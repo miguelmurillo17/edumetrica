@@ -28,6 +28,12 @@ class Materia(models.Model):
     nombre = models.CharField(max_length=100, unique=True)
     descripcion = models.TextField(blank=True)
     activa = models.BooleanField(default=True)
+    # Si la materia es cuantitativa, sus preguntas generadas deben traer la
+    # expresion que el verificador simbolico revisa. Sin esta bandera, una
+    # pregunta de matematicas sin expresion pasaria como "no aplica" y se
+    # saltaria la comprobacion. El valor por omision es falso porque la mayoria
+    # de las materias no lo son; el administrador la marca al darlas de alta.
+    es_cuantitativa = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'materia'

@@ -44,6 +44,7 @@ INSTALLED_APPS = [
     'apps.catalogo',
     'apps.evaluaciones',
     'apps.reportes',
+    'apps.ia',
 ]
 
 MIDDLEWARE = [
@@ -147,6 +148,51 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-responder@edumetrica.mx')
+
+
+# Generacion de preguntas con inteligencia artificial.
+# El acceso pasa por LiteLLM, que permite cambiar de proveedor sin tocar codigo.
+# Las llaves se leen con config() y no con os.environ: python-decouple lee el
+# archivo .env por su cuenta y no llena las variables del sistema, asi que
+# os.environ.get() las veria vacias.
+AI_PROVIDER = config('AI_PROVIDER', default='gemini')
+
+# Vacio significa usar el modelo por omision del proveedor activo.
+AI_MODEL = config('AI_MODEL', default='') or None
+
+AI_TEMPERATURE = config('AI_TEMPERATURE', default=0.7, cast=float)
+AI_MAX_TOKENS = config('AI_MAX_TOKENS', default=4096, cast=int)
+AI_TIMEOUT = config('AI_TIMEOUT', default=60, cast=int)
+AI_MAX_RETRIES = config('AI_MAX_RETRIES', default=1, cast=int)
+
+# Se leen todas, pero solo se exige la del proveedor activo y hasta el momento
+# de la llamada, para que el sistema arranque sin ninguna configurada.
+AI_LLAVES = {
+    'gemini': config('GEMINI_API_KEY', default=''),
+    'groq': config('GROQ_API_KEY', default=''),
+    'deepseek': config('DEEPSEEK_API_KEY', default=''),
+}
+
+
+# Bitacora. Interesa sobre todo la del modulo de inteligencia artificial:
+# deja constancia de cada llamada, el modelo usado y los tokens consumidos,
+# que son los datos del capitulo de resultados.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'consola': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'apps.ia': {
+            'handlers': ['consola'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+    },
+}
 
 
 # Idioma y zona horaria.

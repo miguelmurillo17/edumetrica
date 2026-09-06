@@ -81,6 +81,26 @@ El panel de administracion queda disponible en http://127.0.0.1:8000/admin/
 3. En el archivo `.env` poner `DB_ENGINE=mysql` y los datos de conexion.
 4. Volver a correr `python manage.py migrate`.
 
+## Generacion de preguntas con IA
+
+El acceso al proveedor pasa por LiteLLM, asi que cambiar de proveedor es editar
+el archivo `.env` y no el codigo. El proveedor por omision es Google AI Studio
+(Gemini) en su plan gratuito; tambien estan configurados Groq y DeepSeek.
+
+Copia las variables desde `.env.example` y pon la llave del proveedor que vayas
+a usar. Para probar desde la consola, sin guardar nada en la base de datos:
+
+```bash
+python manage.py generar_preguntas --materia "Matematicas" --categoria "Aritmetica" --nivel 2
+```
+
+Se genera una pregunta a la vez. La pregunta generada pasa por el verificador
+simbolico antes de mostrarse, y el comando indica si la aprobo o con que motivo
+la rechazo.
+
+Los identificadores de modelo caducan: si el proveedor responde que el modelo no
+existe, ajusta `AI_MODEL` en el `.env` con el vigente en su consola.
+
 ## Comandos utiles
 
 ```bash
