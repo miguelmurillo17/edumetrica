@@ -345,3 +345,83 @@ class ExigirExpresionTest(SimpleTestCase):
         doble.return_value = respuesta_falsa(LOTE_BUENO)
         resultado = self.pedir(exige=True)
         self.assertEqual(resultado.preguntas[0].expresion, '2 + 3*4')
+
+
+CRUDO = '{"error": {"code": 400, "status": "FAILED_PRECONDITION", "traza": "x"}}'
+
+
+@override_settings(AI_PROVIDER='gemini', AI_LLAVES={'gemini': 'llave-de-prueba'},
+                   AI_MODEL=None)
+class TextoCrudoTest(SimpleTestCase):
+    """El volcado del proveedor va al detalle y nunca dentro del mensaje.
+
+    Las pruebas de la pantalla comprueban que detalle_error no salga en el
+    HTML, pero eso solo sirve si el texto crudo esta de verdad en ese campo.
+    Aqui se ataca el origen: cada rama que traduce una falla tiene que dejar
+    el mensaje limpio, porque el mensaje si se pinta.
+    """
+
+    def pedir(self):
+        return generar_preguntas(
+            materia='Matemáticas', categoria='Aritmética', nivel=3, cantidad=1
+        )
+
+    def comprobar(self, excepcion):
+        with self.assertRaises(ErrorProveedorIA) as capturado:
+            self.pedir()
+        error = capturado.exception
+        # Ni el volcado completo ni las señas que delatan que es un volcado.
+        self.assertNotIn(CRUDO, str(error))
+        self.assertNotIn('{', str(error))
+        self.assertNotIn('FAILED_PRECONDITION', str(error))
+        # Pero el detalle si lo conserva, que es lo que va a la bitacora.
+        self.assertIn('FAILED_PRECONDITION', error.detalle)
+        return error
+
+    @patch('apps.ia.cliente.completion')
+    def test_el_modelo_caducado(self, doble):
+        from litellm.exceptions import NotFoundError
+
+        doble.side_effect = NotFoundError(
+            message=CRUDO, llm_provider='gemini', model='gemini/inventado',
+        )
+        error = self.comprobar(doble.side_effect)
+
+        self.assertEqual(error.tipo, ErrorProveedorIA.MODELO)
+        self.assertIn('AI_MODEL', str(error))
+
+    @patch('apps.ia.cliente.completion')
+    def test_la_peticion_rechazada(self, doble):
+        from litellm.exceptions import BadRequestError
+
+        doble.side_effect = BadRequestError(
+            message=CRUDO, llm_provider='gemini', model='gemini/gemini-3.6-flash',
+        )
+        error = self.comprobar(doble.side_effect)
+
+        # Que no sea reintentable y que la pantalla no ofrezca reintentar son
+        # la misma decision: la pantalla la deduce del tipo, asi que los dos
+        # tienen que decir lo mismo o el boton contradice a la excepcion.
+        self.assertFalse(error.reintentable)
+        self.assertEqual(error.tipo, ErrorProveedorIA.MODELO)
+
+    @patch('apps.ia.cliente.completion')
+    def test_un_error_de_la_interfaz(self, doble):
+        from litellm.exceptions import APIError
+
+        doble.side_effect = APIError(
+            status_code=500, message=CRUDO, llm_provider='gemini',
+            model='gemini/gemini-3.6-flash',
+        )
+        error = self.comprobar(doble.side_effect)
+
+        self.assertTrue(error.reintentable)
+
+    @patch('apps.ia.cliente.completion')
+    def test_la_red_de_seguridad(self, doble):
+        # Una excepcion pelona, de las que LiteLLM deja escapar cuando le falta
+        # una dependencia suya. Es la rama que mas facil se olvida.
+        doble.side_effect = RuntimeError(CRUDO)
+        error = self.comprobar(doble.side_effect)
+
+        self.assertTrue(error.reintentable)

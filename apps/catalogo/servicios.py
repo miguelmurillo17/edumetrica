@@ -27,6 +27,10 @@ from .verificador import verificar
 
 registro = logging.getLogger(__name__)
 
+# Segundos que se le conceden al hilo por encima del peor caso del proveedor
+# antes de dar por perdida una generacion que sigue en proceso.
+MARGEN_DE_GRACIA = 30
+
 
 def hay_llave_configurada():
     """Dice si el proveedor activo tiene llave, sin llamarlo.
@@ -59,6 +63,22 @@ def solicitudes_de_la_ultima_hora(profesor):
 def alcanzo_el_tope(profesor):
     """Verdadero si el profesor ya agoto su cupo de la hora."""
     return solicitudes_de_la_ultima_hora(profesor) >= settings.AI_LIMITE_POR_HORA
+
+
+def _se_quedo_a_medias(solicitud):
+    """Verdadero si el hilo de esta solicitud ya no puede seguir vivo.
+
+    El hilo muere con el proceso, asi que un reinicio del servidor a media
+    llamada dejaria la solicitud en proceso para siempre y a la pantalla de
+    espera contando segundos sin remedio. Se le da el peor caso del proveedor
+    -todos los intentos agotando su tiempo de espera- mas un margen, y pasado
+    eso se da por perdida.
+    """
+    intentos = settings.AI_MAX_RETRIES + 1
+    limite = timedelta(
+        seconds=settings.AI_TIMEOUT * intentos + MARGEN_DE_GRACIA
+    )
+    return timezone.now() - solicitud.fecha > limite
 
 
 def _guardar_pregunta(generada, dictamen, solicitud, profesor):
@@ -126,8 +146,9 @@ def generar_pregunta(*, profesor, categoria, nivel, solicitud=None):
 
     Ojo con las transacciones: el registro del fallo NO puede ir dentro de una
     transaccion que se revierta al relanzar la excepcion, o se perderia justo
-    el dato de cuantos intentos hicieron falta. Por eso solo el guardado de la
-    pregunta va en un bloque atomico, no la funcion completa.
+    el dato de cuantos intentos hicieron falta. Por eso el fallo se guarda
+    fuera de todo bloque atomico, y el exito dentro del mismo que guarda la
+    pregunta.
     """
     materia = categoria.materia
 
@@ -177,11 +198,15 @@ def generar_pregunta(*, profesor, categoria, nivel, solicitud=None):
     )
 
     solicitud.cantidad_aprobada = 1 if dictamen.aprobada else 0
-    solicitud.save()
 
-    # La pregunta y sus opciones si van juntas: una pregunta a medio guardar,
-    # sin sus cuatro opciones, seria peor que ninguna.
+    # Las tres cosas van juntas y en este orden importa que asi sea. La
+    # pregunta y sus cuatro opciones, porque una pregunta a medio guardar
+    # seria peor que ninguna. Y la solicitud con ellas, porque la pantalla de
+    # espera lee el estado para saber si ya hay algo que revisar: si se
+    # marcara exitosa un instante antes de que la pregunta exista, el sondeo
+    # que cayera en esa rendija veria un lote terminado y vacio.
     with transaction.atomic():
+        solicitud.save()
         pregunta = _guardar_pregunta(generada, dictamen, solicitud, profesor)
 
     registro.info(
@@ -236,6 +261,17 @@ def lanzar_generacion(*, profesor, categoria, nivel):
     -avisarle al alumno que el profesor cerro la evaluacion- con sondeo en
     lugar de infraestructura nueva. Este es el mismo trato.
     """
+    if alcanzo_el_tope(profesor):
+        # La vista tambien lo comprueba, que es donde el profesor recibe la
+        # explicacion; esta es la red. El tope cuida la cuota de toda la
+        # institucion y no puede depender de que la pantalla se acuerde, igual
+        # que la cantidad de preguntas se valida en el formulario y otra vez
+        # en el servicio que la usa.
+        raise ValueError(
+            f'El profesor ya pidió {settings.AI_LIMITE_POR_HORA} generaciones '
+            f'en la última hora.'
+        )
+
     solicitud = crear_solicitud(
         profesor=profesor, categoria=categoria, nivel=nivel
     )
@@ -255,7 +291,20 @@ def mensaje_de_espera(solicitud):
     mensaje ya redactado, que es el que explica de quien es el problema.
     """
     if solicitud.estado == SolicitudGeneracion.Estado.EN_PROCESO:
-        return {'estado': 'en_proceso'}
+        if not _se_quedo_a_medias(solicitud):
+            return {'estado': 'en_proceso'}
+        # Se anota en la solicitud y no solo en la respuesta: de esta tabla
+        # salen los numeros del capitulo de resultados, y una solicitud que se
+        # quedo en proceso para siempre los ensucia. Si el hilo siguiera vivo
+        # despues de todo, al terminar sobrescribe esto y el siguiente sondeo
+        # ve la pregunta.
+        solicitud.estado = SolicitudGeneracion.Estado.FALLIDA
+        solicitud.mensaje_error = (
+            'La generación se interrumpió antes de terminar. Suele pasar '
+            'cuando el servidor se reinicia a media petición. Puedes '
+            'intentarlo de nuevo.'
+        )
+        solicitud.save(update_fields=['estado', 'mensaje_error'])
 
     if solicitud.estado == SolicitudGeneracion.Estado.FALLIDA:
         return {

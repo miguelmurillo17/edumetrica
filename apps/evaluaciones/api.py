@@ -159,8 +159,21 @@ def finalizar_intento(request, intento_id):
 
 @api_view(['GET'])
 def resultado_intento(request, intento_id):
-    """Devuelve el resultado de un intento que el alumno ya finalizo."""
+    """Devuelve el resultado de un intento que el alumno ya finalizo.
+
+    Se comprueba que de verdad este finalizado, y no se da por hecho porque la
+    aplicacion de Vue solo lo pida al terminar. El resultado lleva la respuesta
+    correcta y el procedimiento de cada pregunta: entregarlo a media evaluacion
+    seria entregar el examen resuelto, que es justo lo que cuida
+    iniciar_evaluacion al armar sus diccionarios a mano.
+    """
     intento = get_object_or_404(IntentoEvaluacion, id=intento_id, alumno=request.user)
+
+    if intento.estado != IntentoEvaluacion.Estado.FINALIZADO:
+        return Response(
+            {'detalle': 'Todavía no has terminado esta evaluación.'}, status=400
+        )
+
     return Response(_construir_resultado(intento))
 
 

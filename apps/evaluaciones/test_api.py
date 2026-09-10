@@ -175,3 +175,21 @@ class ResultadoDelAlumnoTest(TestCase):
         fila = self.fila_de(respuesta.json()['detalle'], self.fallada.enunciado)
         self.assertEqual(respuesta.status_code, 200)
         self.assertEqual(fila['procedimiento'], '')
+
+    def test_el_resultado_no_se_entrega_a_media_evaluacion(self):
+        # El resultado lleva la respuesta correcta y el procedimiento de cada
+        # pregunta. Si se entregara sin comprobar que el intento ya termino,
+        # bastaria con pedirlo desde otra pestaña para tener el examen
+        # resuelto, y las dos reglas que cuida iniciar_evaluacion no servirian
+        # de nada.
+        intento = self.intento_resuelto()
+        self.assertEqual(intento.estado, IntentoEvaluacion.Estado.EN_CURSO)
+
+        respuesta = self.client.get(reverse(
+            'evaluaciones:api_resultado', args=[intento.id]
+        ))
+
+        self.assertEqual(respuesta.status_code, 400)
+        cuerpo = respuesta.content.decode()
+        self.assertNotIn(PROCEDIMIENTO, cuerpo)
+        self.assertNotIn('respuesta_correcta', cuerpo)

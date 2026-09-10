@@ -7,16 +7,18 @@ sostiene la propuesta: una pregunta generada nunca queda utilizable sin que
 una persona la valide.
 """
 
+from datetime import timedelta
 from unittest.mock import patch
 
-from django.test import TestCase
+from django.test import TestCase, override_settings
+from django.utils import timezone
 
 from apps.ia.errores import ErrorProveedorIA
 from apps.ia.esquemas import PreguntaGenerada, ResultadoGeneracion
 from apps.usuarios.models import Persona
 
 from .models import Categoria, Materia, Nivel, Pregunta, SolicitudGeneracion
-from .servicios import generar_pregunta
+from .servicios import generar_pregunta, lanzar_generacion, mensaje_de_espera
 
 
 def resultado_falso(expresion='2 + 3*4', valores=None, indice=0):
@@ -167,3 +169,110 @@ class GenerarPreguntaTest(TestCase):
         pregunta.estado = Pregunta.Estado.VALIDADA
         pregunta.save()
         self.assertEqual(solicitud.cantidad_validada, 1)
+
+
+class EstadoDeLaSolicitudTest(TestCase):
+    """Lo que la pantalla de espera alcanza a ver mientras corre el hilo."""
+
+    def setUp(self):
+        self.profesor = Persona.objects.create_user(
+            correo='profesor@prueba.mx', nombre='Ana', apellido='Ruiz',
+            password='x', rol=Persona.Rol.PROFESOR,
+        )
+        self.materia = Materia.objects.create(
+            nombre='Matemáticas', es_cuantitativa=True
+        )
+        self.categoria = Categoria.objects.create(
+            materia=self.materia, nombre='Aritmética'
+        )
+        self.nivel = Nivel.objects.create(numero=2, nombre='Elemental')
+
+    def crear_solicitud(self, **extras):
+        return SolicitudGeneracion.objects.create(
+            profesor=self.profesor, materia=self.materia,
+            categoria=self.categoria, nivel=self.nivel, cantidad_pedida=1,
+            **extras
+        )
+
+    @patch('apps.catalogo.servicios._guardar_pregunta')
+    @patch('apps.catalogo.servicios.generar_preguntas')
+    def test_nunca_queda_exitosa_sin_su_pregunta(self, doble, guardado):
+        # La pantalla de espera deduce del estado que ya hay algo que revisar.
+        # Si el estado se guardara antes que la pregunta, un fallo al guardarla
+        # dejaria una solicitud exitosa y vacia para siempre, y el sondeo que
+        # cayera en esa rendija veria un lote terminado sin nada dentro.
+        doble.return_value = resultado_falso()
+        guardado.side_effect = RuntimeError('la base de datos se cayo')
+
+        with self.assertRaises(RuntimeError):
+            generar_pregunta(
+                profesor=self.profesor, categoria=self.categoria,
+                nivel=self.nivel,
+            )
+
+        solicitud = SolicitudGeneracion.objects.get()
+        self.assertEqual(Pregunta.objects.count(), 0)
+        self.assertNotEqual(
+            solicitud.estado, SolicitudGeneracion.Estado.EXITOSA
+        )
+
+    def test_mientras_el_hilo_puede_seguir_vivo_contesta_en_proceso(self):
+        solicitud = self.crear_solicitud()
+        self.assertEqual(mensaje_de_espera(solicitud)['estado'], 'en_proceso')
+
+    @override_settings(AI_TIMEOUT=30, AI_MAX_RETRIES=1)
+    def test_una_generacion_interrumpida_deja_de_esperarse(self):
+        # El hilo muere con el proceso, asi que un reinicio del servidor a
+        # media llamada dejaria a la pantalla contando segundos sin remedio.
+        solicitud = self.crear_solicitud()
+        SolicitudGeneracion.objects.filter(id=solicitud.id).update(
+            fecha=timezone.now() - timedelta(minutes=10)
+        )
+        solicitud.refresh_from_db()
+
+        situacion = mensaje_de_espera(solicitud)
+
+        self.assertEqual(situacion['estado'], 'fallida')
+        self.assertTrue(situacion['reintentable'])
+        self.assertIn('se interrumpió', situacion['mensaje'])
+        # Y queda anotado en la solicitud: de esta tabla salen los numeros del
+        # capitulo de resultados y una fila en proceso para siempre los ensucia.
+        solicitud.refresh_from_db()
+        self.assertEqual(solicitud.estado, SolicitudGeneracion.Estado.FALLIDA)
+
+
+@override_settings(AI_LIMITE_POR_HORA=2)
+class TopeEnElServicioTest(TestCase):
+    """El tope no puede depender de que la pantalla se acuerde de mirarlo."""
+
+    def setUp(self):
+        self.profesor = Persona.objects.create_user(
+            correo='profesor@prueba.mx', nombre='Ana', apellido='Ruiz',
+            password='x', rol=Persona.Rol.PROFESOR,
+        )
+        self.materia = Materia.objects.create(
+            nombre='Matemáticas', es_cuantitativa=True
+        )
+        self.categoria = Categoria.objects.create(
+            materia=self.materia, nombre='Aritmética'
+        )
+        self.nivel = Nivel.objects.create(numero=2, nombre='Elemental')
+
+    @patch('apps.catalogo.servicios.threading.Thread')
+    def test_al_llegar_al_tope_no_arranca_el_hilo(self, hilo):
+        for _ in range(2):
+            SolicitudGeneracion.objects.create(
+                profesor=self.profesor, materia=self.materia,
+                categoria=self.categoria, nivel=self.nivel, cantidad_pedida=1,
+            )
+
+        with self.assertRaises(ValueError):
+            lanzar_generacion(
+                profesor=self.profesor, categoria=self.categoria,
+                nivel=self.nivel,
+            )
+
+        # Ni hilo ni solicitud nueva: la cuota es de la institucion y un
+        # intento de mas ya la habria tocado.
+        hilo.assert_not_called()
+        self.assertEqual(SolicitudGeneracion.objects.count(), 2)

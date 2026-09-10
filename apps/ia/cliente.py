@@ -97,6 +97,10 @@ def pedir_json(*, prompt_sistema, prompt_usuario, temperatura=None,
 
     registro.info('Pidiendo preguntas a %s (modelo %s)', proveedor.clave, modelo)
 
+    # Regla de todas las ramas de abajo: el texto crudo del proveedor va
+    # siempre en detalle y jamas dentro del mensaje. El mensaje lo lee el
+    # profesor en la pantalla de espera, y un volcado de JSON ahi hace pensar
+    # que el sistema se rompio cuando el problema es de quien atiende.
     try:
         respuesta = completion(**argumentos)
     except AuthenticationError as error:
@@ -148,8 +152,7 @@ def pedir_json(*, prompt_sistema, prompt_usuario, temperatura=None,
         raise ErrorProveedorIA(
             f'El modelo {modelo} ya no está disponible en '
             f'{proveedor.etiqueta}. Revisa el identificador vigente en '
-            f'{proveedor.consola} y ajústalo con AI_MODEL en el archivo .env. '
-            f'Detalle: {error}',
+            f'{proveedor.consola} y ajústalo con AI_MODEL en el archivo .env.',
             reintentable=False,
             proveedor=proveedor.clave,
             tipo=ErrorProveedorIA.MODELO,
@@ -157,16 +160,27 @@ def pedir_json(*, prompt_sistema, prompt_usuario, temperatura=None,
         ) from error
     except BadRequestError as error:
         # Casi siempre: el modelo no existe, o el prompt es demasiado largo.
+        # Las dos son configuracion del servidor, asi que se marca del mismo
+        # tipo que el modelo caducado: reintentar repetiria el mismo error.
+        registro.error('Peticion rechazada por %s: %s', proveedor.clave, error)
         raise ErrorProveedorIA(
-            f'La solicitud al modelo {modelo} fue rechazada: {error}',
+            f'{proveedor.etiqueta} rechazó la solicitud enviada al modelo '
+            f'{modelo}. Es un problema de configuración del servidor, no algo '
+            f'que se arregle reintentando. Avisa al administrador.',
             reintentable=False,
             proveedor=proveedor.clave,
+            tipo=ErrorProveedorIA.MODELO,
+            detalle=str(error),
         ) from error
     except APIError as error:
+        registro.warning('Error de %s: %s', proveedor.clave, error)
         raise ErrorProveedorIA(
-            f'Error inesperado de {proveedor.etiqueta}: {error}',
+            f'{proveedor.etiqueta} respondió con un error al atender la '
+            f'solicitud. No es una falla de Edumétrica; vuelve a intentarlo en '
+            f'un momento.',
             reintentable=True,
             proveedor=proveedor.clave,
+            detalle=str(error),
         ) from error
     except Exception as error:
         # Red de seguridad. LiteLLM no siempre levanta sus propias excepciones:
@@ -175,9 +189,12 @@ def pedir_json(*, prompt_sistema, prompt_usuario, temperatura=None,
         # biblioteca, que es justo lo que este modulo promete evitar.
         registro.exception('Fallo no previsto al llamar a %s', proveedor.clave)
         raise ErrorProveedorIA(
-            f'Fallo inesperado al usar {proveedor.etiqueta}: {error}',
+            f'No se pudo completar la solicitud a {proveedor.etiqueta} por un '
+            f'fallo inesperado. Vuelve a intentarlo; si sigue ocurriendo, '
+            f'avisa al administrador.',
             reintentable=True,
             proveedor=proveedor.clave,
+            detalle=str(error),
         ) from error
 
     try:
