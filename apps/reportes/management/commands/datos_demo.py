@@ -122,6 +122,14 @@ class Command(BaseCommand):
                     materia=categoria.materia, categoria=categoria,
                     nivel=Nivel.objects.get(numero=random.randint(1, 6)),
                     enunciado=f'{categoria.nombre}: pregunta de ejemplo número {numero}',
+                    # El procedimiento es lo que el alumno lee al final en las
+                    # preguntas que fallo. Sin el, la pantalla de resultado de
+                    # la demostracion se veria sin la mitad que ensena.
+                    procedimiento=(
+                        'Se identifica lo que pide el enunciado.\n'
+                        'Se plantea la operación y se resuelve paso a paso.\n'
+                        'El resultado obtenido corresponde a la opción correcta.'
+                    ),
                     creada_por=profesor,
                     # Las de demostracion nacen validadas para que se puedan
                     # usar en las evaluaciones de ejemplo.

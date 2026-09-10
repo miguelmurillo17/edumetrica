@@ -65,6 +65,14 @@
                 <p class="detalle-enunciado">[[ fila.enunciado ]]</p>
                 <p class="detalle-tu">Tu respuesta: [[ fila.tu_respuesta || 'Sin responder' ]]</p>
                 <p v-if="!fila.acerto" class="detalle-correcta">Respuesta correcta: [[ fila.respuesta_correcta ]]</p>
+                <!-- El procedimiento llega solo en las preguntas falladas, y va
+                     plegado para que el alumno decida cuando leerlo. Se usa
+                     details en lugar de JavaScript porque el navegador ya sabe
+                     abrirlo y cerrarlo. -->
+                <details v-if="fila.procedimiento" class="procedimiento-alumno">
+                    <summary>Ver cómo se resuelve</summary>
+                    <p>[[ fila.procedimiento ]]</p>
+                </details>
             </li>
         </ul>
 

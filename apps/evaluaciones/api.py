@@ -2,8 +2,12 @@
 Endpoints en formato JSON que consume la aplicacion de Vue del alumno.
 
 Se autentican con la misma sesion del navegador. La retroalimentacion (saber
-que opcion era la correcta) se entrega solo al finalizar la evaluacion, nunca
-mientras el alumno la esta presentando.
+que opcion era la correcta, y el procedimiento que lleva a ella) se entrega
+solo al finalizar la evaluacion, nunca mientras el alumno la esta presentando.
+
+Por eso los diccionarios se arman a mano en lugar de serializar el modelo
+completo: es lo que garantiza que ni es_correcta ni procedimiento se cuelen en
+la respuesta que el alumno recibe al iniciar.
 """
 
 from django.shortcuts import get_object_or_404
@@ -54,11 +58,18 @@ def _construir_resultado(intento):
     for pregunta in evaluacion.preguntas.all().prefetch_related('opciones'):
         respuesta = respuestas.get(pregunta.id)
         correcta = pregunta.opciones.filter(es_correcta=True).first()
+        acerto = respuesta.es_correcta if respuesta else False
         detalle.append({
             'enunciado': pregunta.enunciado,
             'tu_respuesta': respuesta.opcion_seleccionada.texto if respuesta and respuesta.opcion_seleccionada else None,
             'respuesta_correcta': correcta.texto if correcta else None,
-            'acerto': respuesta.es_correcta if respuesta else False,
+            'acerto': acerto,
+            # El procedimiento solo viaja en las preguntas que el alumno fallo,
+            # que son en las que ensena algo. Una pregunta sin responder cuenta
+            # como fallada, y ahi tambien sirve. Se manda cadena vacia y no la
+            # llave ausente para que la plantilla no tenga que distinguir entre
+            # "no aplica" y "esta pregunta no trae procedimiento".
+            'procedimiento': '' if acerto else pregunta.procedimiento,
         })
 
     return {
