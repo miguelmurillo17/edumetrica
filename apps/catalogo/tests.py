@@ -292,3 +292,60 @@ class LimitesConocidosTest(SimpleTestCase):
         # La raiz de menos uno da I, que es un numero valido y no un valor
         # indefinido, aunque quede fuera del temario de nivel medio superior.
         self.assertEqual(str(interpretar('sqrt(-1)')), 'I')
+
+
+class BancoDeMatematicasTest(SimpleTestCase):
+    """Las treinta preguntas capturadas a mano del comando banco_matematicas.
+
+    Aqui lo que se prueba son los datos, no el codigo: una clave de respuesta
+    equivocada o dos opciones que valen lo mismo reprueban injustamente al
+    alumno, y al editar una pregunta es facil introducir cualquiera de las dos
+    sin darse cuenta. Estas comprobaciones son las mismas por las que pasa una
+    pregunta generada antes de guardarse.
+    """
+
+    def preguntas(self):
+        from .management.commands.banco_matematicas import PREGUNTAS
+        return PREGUNTAS
+
+    def test_son_treinta(self):
+        self.assertEqual(len(self.preguntas()), 30)
+
+    def test_todas_pasan_el_verificador_simbolico(self):
+        for datos in self.preguntas():
+            with self.subTest(enunciado=datos['enunciado'][:50]):
+                dictamen = verificar(
+                    datos['expresion'], datos['valores'], datos['correcta']
+                )
+                self.assertTrue(dictamen.aprobada, dictamen.motivo)
+
+    def test_cada_una_muestra_cuatro_opciones_distintas(self):
+        # El verificador revisa los valores, que no siempre son el texto que
+        # se ve: una pregunta puede traer 1/2 y 2/4 en pantalla y pasar la
+        # comprobacion, porque a ella le llegan ya como el mismo numero.
+        for datos in self.preguntas():
+            with self.subTest(enunciado=datos['enunciado'][:50]):
+                self.assertEqual(len(datos['opciones']), 4)
+                self.assertEqual(len(set(datos['opciones'])), 4)
+
+    def test_el_texto_y_los_valores_van_emparejados(self):
+        for datos in self.preguntas():
+            with self.subTest(enunciado=datos['enunciado'][:50]):
+                self.assertEqual(len(datos['valores']), len(datos['opciones']))
+
+    def test_todas_traen_procedimiento(self):
+        # Es lo que el alumno lee cuando falla; sin el, la pregunta no ensena.
+        for datos in self.preguntas():
+            with self.subTest(enunciado=datos['enunciado'][:50]):
+                self.assertTrue(datos['procedimiento'].strip())
+
+    def test_los_niveles_estan_dentro_de_los_seis(self):
+        for datos in self.preguntas():
+            with self.subTest(enunciado=datos['enunciado'][:50]):
+                self.assertIn(datos['nivel'], range(1, 7))
+
+    def test_ningun_enunciado_se_repite(self):
+        # El comando salta las que ya existen comparando el enunciado, asi que
+        # dos iguales dejarian una sin cargar y sin avisar.
+        enunciados = [datos['enunciado'] for datos in self.preguntas()]
+        self.assertEqual(len(enunciados), len(set(enunciados)))
