@@ -50,7 +50,12 @@
                 <td>{{ pregunta.categoria.nombre }}</td>
                 <td>{{ pregunta.nivel.numero }}</td>
                 <td>
-                    <span class="etiqueta {% if pregunta.estado == 'validada' %}etiqueta-disponible{% elif pregunta.estado == 'borrador' %}etiqueta-proxima{% else %}etiqueta-cerrada{% endif %}">
+                    {% comment %}
+                    Los valores del modelo -validada, borrador, descartada- son
+                    los mismos que nombran las clases, asi que no hace falta
+                    traducirlos uno por uno.
+                    {% endcomment %}
+                    <span class="estado estado-{{ pregunta.estado }}">
                         {{ pregunta.get_estado_display }}
                     </span>
                 </td>

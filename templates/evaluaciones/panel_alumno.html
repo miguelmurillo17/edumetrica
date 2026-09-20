@@ -18,19 +18,19 @@
             </p>
 
             {% if fila.situacion == 'disponible' %}
-            <span class="etiqueta etiqueta-disponible">Disponible</span>
+            <span class="estado estado-disponible">Disponible</span>
             <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:presentar_evaluacion' fila.evaluacion.id %}">Presentar</a>
 
             {% elif fila.situacion == 'finalizada' %}
-            <span class="etiqueta etiqueta-finalizada">Finalizada</span>
+            <span class="estado estado-finalizada">Finalizada</span>
             <p class="calificacion-mini">Calificación: {{ fila.intento.calificacion }}</p>
 
             {% elif fila.situacion == 'proxima' %}
-            <span class="etiqueta etiqueta-proxima">Programada</span>
+            <span class="estado estado-programada">Programada</span>
             <p class="datos-evaluacion">Inicia el {{ fila.evaluacion.fecha_inicio|date:"d/m/Y H:i" }}</p>
 
             {% else %}
-            <span class="etiqueta etiqueta-cerrada">Cerrada</span>
+            <span class="estado estado-cerrada">Cerrada</span>
             {% endif %}
         </div>
         {% endfor %}

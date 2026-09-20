@@ -8,6 +8,15 @@
     --color-borde: #d8e0dc;
     --color-error: #c0392b;
     --radio: 10px;
+    /* Colores del punto que acompana a cada estado. Van aqui y no pegados a
+       cada clase porque varios estados de distintas pantallas comparten
+       significado: lo que esta en marcha, lo que espera, lo que ya termino y
+       lo que quedo fuera. */
+    --punto-favorable: #3f9168;
+    --punto-pendiente: #d8a31a;
+    --punto-terminado: #7d94a6;
+    --punto-fuera: #b4635a;
+    --punto-sin-definir: #c9cfcc;
 }
 
 * {
@@ -352,34 +361,69 @@ a.tarjeta:hover {
     border-bottom: none;
 }
 
-/* Etiquetas de situacion en el panel del alumno */
-.etiqueta {
-    display: inline-block;
-    font-size: 0.75rem;
-    font-weight: 600;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
+/* Estados
+   -------
+   Un punto de color delante del texto, en lugar de encerrar la palabra en un
+   recuadro. La palabra sigue siendo la que informa -y por eso se lee igual de
+   grande que el resto de la celda-; el color solo sirve para encontrarla de un
+   vistazo cuando la lista es larga. Al no depender del color para entenderse,
+   tambien funciona impreso y para quien no distingue los tonos. */
+.estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    white-space: nowrap;
+}
+
+.estado::before {
+    content: '';
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    /* No se encoge cuando el texto del estado es largo. */
+    flex: none;
+    /* Un estado sin color propio no desaparece: sale en gris. */
+    background-color: var(--punto-sin-definir);
+}
+
+/* Lo que esta en marcha o ya paso la revision. */
+.estado-validada::before,
+.estado-disponible::before,
+.estado-activo::before {
+    background-color: var(--punto-favorable);
+}
+
+/* Lo que todavia espera a que alguien haga algo. */
+.estado-borrador::before,
+.estado-programada::before,
+.estado-anticipada::before {
+    background-color: var(--punto-pendiente);
+}
+
+/* Lo que llego a su fin por la via normal. */
+.estado-finalizada::before {
+    background-color: var(--punto-terminado);
+}
+
+/* Lo que quedo fuera de juego. */
+.estado-descartada::before,
+.estado-cerrada::before,
+.estado-inactivo::before {
+    background-color: var(--punto-fuera);
+}
+
+/* A eso mismo se le baja el tono del texto, para que no compita con lo que
+   si esta vigente. */
+.estado-descartada,
+.estado-cerrada,
+.estado-inactivo {
+    color: #8a938f;
+}
+
+/* En las tarjetas del alumno el estado encabeza el bloque y necesita aire
+   antes de la calificacion o del boton que lo sigue. */
+.tarjeta .estado {
     margin-bottom: 0.6rem;
-}
-
-.etiqueta-disponible {
-    background-color: #d8f0e2;
-    color: var(--color-principal);
-}
-
-.etiqueta-finalizada {
-    background-color: #e2e8ee;
-    color: #3a536b;
-}
-
-.etiqueta-proxima {
-    background-color: #fdf0d5;
-    color: #8a6d1a;
-}
-
-.etiqueta-cerrada {
-    background-color: #f0e2e2;
-    color: #8a3a3a;
 }
 
 .datos-evaluacion {

@@ -10,7 +10,7 @@
     <div class="grupo">
         <div class="encabezado-lista">
             <h2>{{ grupo.nombre }}</h2>
-            <span class="etiqueta {% if grupo.activo %}etiqueta-disponible{% else %}etiqueta-cerrada{% endif %}">
+            <span class="estado {% if grupo.activo %}estado-activo{% else %}estado-inactivo{% endif %}">
                 {% if grupo.activo %}Activo{% else %}Inactivo{% endif %}
             </span>
         </div>
