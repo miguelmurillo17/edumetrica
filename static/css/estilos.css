@@ -78,11 +78,14 @@ a.marca {
     background-color: rgba(255, 255, 255, 0.15);
 }
 
-/* Contenido */
+/* Contenido
+   ---------
+   Ocupa todo el ancho del navegador. El aire de los costados lo da un padding
+   que crece con la ventana -de 1rem en el telefono a 3rem en el monitor- en
+   lugar de una columna centrada con un ancho tope, que dejaba franjas vacias
+   en las pantallas grandes. */
 .contenido {
-    max-width: 960px;
-    margin: 0 auto;
-    padding: 2rem 1.5rem;
+    padding: 2rem clamp(1rem, 4vw, 3rem);
 }
 
 /* Mensajes del sistema */
@@ -135,7 +138,34 @@ a.marca {
     font-size: 0.9rem;
 }
 
-/* Formularios */
+/* Formularios
+   -----------
+   Los campos se acomodan en una rejilla que reparte el ancho disponible: en el
+   monitor caben varios por renglon y en el telefono queda uno solo, sin fijar
+   el numero de columnas. Los bloques que necesitan todo el ancho -areas de
+   texto, tablas, la fila de fechas, las opciones de respuesta y los avisos- se
+   estiran de orilla a orilla; los campos cortos son los unicos que comparten
+   renglon. */
+.formulario {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 0 1.5rem;
+    align-items: start;
+}
+
+/* Lo que no debe partirse en columnas ocupa el renglon completo. */
+.formulario > .aviso-error,
+.formulario > h2,
+.formulario > p,
+.formulario > .opcion,
+.formulario > .acciones,
+.formulario > .fila-doble,
+.formulario > .campo:has(textarea),
+.formulario > .campo:has(table),
+.formulario > .campo:has(.lista-casillas) {
+    grid-column: 1 / -1;
+}
+
 .formulario .campo {
     margin-bottom: 1.1rem;
 }
@@ -278,6 +308,13 @@ a.tarjeta:hover {
     padding-right: 1.6rem;
 }
 
+/* El boton secundario trae un margen superior para cuando va suelto (el de
+   "Agregar categoria"). Dentro de una fila de acciones estorba: descuadra su
+   altura frente al boton principal. */
+.acciones .boton-secundario {
+    margin-top: 0;
+}
+
 .enlace-cancelar {
     color: #6c7a74;
     text-decoration: none;
@@ -389,7 +426,8 @@ a.tarjeta:hover {
 /* Lo que esta en marcha o ya paso la revision. */
 .estado-validada::before,
 .estado-disponible::before,
-.estado-activo::before {
+.estado-activo::before,
+.estado-en_curso::before {
     background-color: var(--punto-favorable);
 }
 
@@ -655,6 +693,12 @@ li.error .marca-resultado {
     gap: 0.8rem;
 }
 
+/* El boton secundario trae un margen superior para cuando va suelto; en la fila
+   de filtros estorba y descuadra su altura frente al boton Filtrar. */
+.acciones-filtro .boton-secundario {
+    margin-top: 0;
+}
+
 .numero-grande {
     font-size: 2.5rem;
     font-weight: bold;
@@ -699,6 +743,17 @@ li.error .marca-resultado {
 .datos-grupo {
     color: #555;
     margin-top: 0.4rem;
+}
+
+/* Plantilla docente del grupo: cada profesor con las asignaturas que imparte. */
+.lista-docentes {
+    margin: 0.3rem 0 0.8rem;
+    padding-left: 1.2rem;
+    color: #555;
+}
+
+.lista-docentes li {
+    margin-bottom: 0.2rem;
 }
 
 /* Boton de icono para las acciones de los listados: editar, quitar, etc.
@@ -828,28 +883,124 @@ li.error .marca-resultado {
     font-size: 0.9rem;
 }
 
-/* Filtro por estado en el listado de preguntas */
-.filtros-lista {
+/* Captura del procedimiento paso a paso
+   ------------------------------------
+   Cada paso es un renglon con su numero delante -que pone el sistema- y un
+   boton para quitarlo. Asi el profesor no tiene que numerar ni recordar el
+   formato: la estructura la impone la interfaz. */
+.renglon-paso {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.6rem;
+    margin-bottom: 0.5rem;
+}
+
+.numero-paso {
+    flex: none;
+    width: 1.6rem;
+    height: 1.6rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    background-color: #eef3f0;
+    color: var(--color-principal);
+    font-size: 0.85rem;
+    font-weight: 600;
+    /* Alineado con el primer renglon del campo, no con el centro del bloque. */
+    margin-top: 0.35rem;
+}
+
+/* El campo de cada paso ocupa todo el ancho disponible y crece a lo alto con el
+   texto: empieza en un renglon (rows="1") y el JS le ajusta el alto. No se puede
+   arrastrar a mano ni muestra barra de desplazamiento. */
+.entrada-paso {
+    flex: 1;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    font-size: 1rem;
+    font-family: inherit;
+    line-height: 1.4;
+    resize: none;
+    overflow: hidden;
+}
+
+.entrada-paso:focus {
+    outline: none;
+    border-color: var(--color-principal-claro);
+}
+
+.renglon-paso .boton-quitar-paso {
+    margin-top: 0.35rem;
+}
+
+/* Listado de preguntas: buscador, cabeceras ordenables y resaltado
+   --------------------------------------------------------------- */
+
+/* Barra sobre la tabla, con el buscador que trabaja en el navegador. */
+.barra-tabla {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
-    margin: 1rem 0;
+    gap: 0.8rem;
+    margin: 1.2rem 0 0.6rem;
+    flex-wrap: wrap;
+}
+
+.buscador-tabla {
+    flex: 1;
+    min-width: 220px;
+    max-width: 420px;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid var(--color-borde);
+    border-radius: var(--radio);
+    font-size: 0.95rem;
+    font-family: inherit;
+    background: white;
+}
+
+.buscador-tabla:focus {
+    outline: none;
+    border-color: var(--color-principal-claro);
+}
+
+.conteo-tabla {
+    color: #6c7a74;
     font-size: 0.9rem;
 }
 
-.filtros-lista a {
-    color: #6c7a74;
+/* La cabecera ordenable es un enlace, pero se ve como el resto del titulo: sin
+   subrayado ni color de liga, solo la flecha que indica el sentido. */
+.tabla th .orden {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: inherit;
     text-decoration: none;
-    padding: 0.3rem 0.7rem;
-    border: 1px solid var(--color-borde);
-    border-radius: var(--radio);
-    background-color: white;
+    cursor: pointer;
 }
 
-.filtros-lista a.filtro-activo {
-    color: white;
-    background-color: var(--color-principal);
-    border-color: var(--color-principal);
+.tabla th .orden:hover {
+    text-decoration: underline;
+}
+
+/* La flecha se ve tenue cuando la columna no es la que ordena, y en firme
+   cuando si lo es. */
+.flecha-orden {
+    color: #b3bdb8;
+    font-size: 0.85em;
+}
+
+.tabla th .orden-activo .flecha-orden {
+    color: var(--color-principal);
+}
+
+/* Palabras que coinciden con la busqueda. */
+mark.resaltado {
+    background-color: #fce6a6;
+    color: inherit;
+    border-radius: 3px;
+    padding: 0 1px;
 }
 
 /* Procedimiento plegado en el resultado del alumno */
@@ -872,4 +1023,36 @@ li.error .marca-resultado {
     line-height: 1.5;
     white-space: pre-line;
     color: var(--color-texto);
+}
+
+/* Telefono y tablet en vertical
+   ----------------------------
+   El formulario deja de repartirse en columnas y se apila; las tablas, que en
+   una pantalla angosta no caben, se pueden recorrer de lado sin encoger el
+   texto ni descuadrar la pagina. */
+@media (max-width: 640px) {
+    .formulario {
+        grid-template-columns: 1fr;
+    }
+
+    .tabla {
+        display: block;
+        overflow-x: auto;
+        white-space: nowrap;
+    }
+
+    .tabla th,
+    .tabla td {
+        padding: 0.55rem 0.7rem;
+    }
+
+    .acciones {
+        flex-wrap: wrap;
+    }
+
+    /* El titulo y sus botones se apilan en vez de encimarse. */
+    .encabezado-lista {
+        flex-wrap: wrap;
+        gap: 0.6rem;
+    }
 }

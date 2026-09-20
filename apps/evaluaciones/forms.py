@@ -5,7 +5,7 @@ from django.forms import inlineformset_factory, BaseInlineFormSet
 
 from apps.catalogo.models import Materia, Categoria, Pregunta
 
-from .models import Grupo, Evaluacion, CategoriaEvaluacion
+from .models import Grupo, Evaluacion, CategoriaEvaluacion, AsignacionDocente
 
 
 class EntradaFechaHora(forms.DateTimeInput):
@@ -30,20 +30,25 @@ class EvaluacionForm(forms.ModelForm):
     def __init__(self, *args, usuario=None, **kwargs):
         super().__init__(*args, **kwargs)
 
-        # El profesor solo puede programar a los grupos que tiene asignados.
-        # El superusuario, que no tiene grupos, puede hacerlo a cualquiera.
+        # El profesor solo puede programar a los grupos que tiene asignados y
+        # solo las disciplinas que imparte en ellos. El superusuario, que no
+        # tiene asignaciones, puede hacerlo con cualquiera.
         grupos = Grupo.objects.filter(activo=True)
+        materias = Materia.objects.filter(activa=True)
         if usuario is not None and usuario.es_profesor:
-            grupos = grupos.filter(profesores=usuario)
+            grupos = grupos.filter(profesores=usuario).distinct()
+            materias = materias.filter(
+                categorias__asignaciones__profesor=usuario
+            ).distinct()
         self.fields['grupo'].queryset = grupos
-
-        self.fields['materia'].queryset = Materia.objects.filter(activa=True)
+        self.fields['materia'].queryset = materias
 
         # Los selectores de fecha entregan el dato en este formato.
         self.fields['fecha_inicio'].input_formats = ['%Y-%m-%dT%H:%M']
         self.fields['fecha_fin'].input_formats = ['%Y-%m-%dT%H:%M']
 
         self.fields['titulo'].label = 'Título de la evaluación'
+        self.fields['materia'].label = 'Disciplina'
         self.fields['fecha_inicio'].label = 'Inicio'
         self.fields['fecha_fin'].label = 'Fin'
 
@@ -75,13 +80,29 @@ class CategoriaEvaluacionForm(forms.ModelForm):
 
 
 class BaseCategoriasFormSet(BaseInlineFormSet):
-    """Valida los renglones de categorias de la evaluacion.
+    """Valida los renglones de asignaturas de la evaluacion.
 
-    La materia se asigna desde la vista antes de validar, porque vive en el
-    otro formulario y hace falta para revisar que las categorias le toquen.
+    La materia, el grupo y el usuario se asignan desde la vista antes de
+    validar, porque viven en el otro formulario y hacen falta para revisar que
+    las asignaturas le toquen al profesor en ese grupo.
     """
 
     materia = None
+    grupo = None
+    usuario = None
+
+    def add_fields(self, form, index):
+        super().add_fields(form, index)
+        # El profesor solo puede elegir asignaturas que imparte en alguno de sus
+        # grupos; en clean() se afina que sea justo la del grupo elegido.
+        if self.usuario is not None and self.usuario.es_profesor:
+            if 'categoria' in form.fields:
+                form.fields['categoria'].queryset = (
+                    Categoria.objects
+                    .filter(activa=True, asignaciones__profesor=self.usuario)
+                    .distinct()
+                    .select_related('materia')
+                )
 
     def clean(self):
         super().clean()
@@ -100,27 +121,43 @@ class BaseCategoriasFormSet(BaseInlineFormSet):
 
         if not renglones:
             raise forms.ValidationError(
-                'Debes agregar al menos una categoría con su número de preguntas.'
+                'Debes agregar al menos una asignatura con su número de preguntas.'
             )
 
-        # Una misma categoria no se puede capturar dos veces.
+        # Una misma asignatura no se puede capturar dos veces.
         elegidas = [datos['categoria'] for datos in renglones]
         if len(elegidas) != len(set(elegidas)):
-            raise forms.ValidationError('Hay categorías repetidas en la tabla.')
+            raise forms.ValidationError('Hay asignaturas repetidas en la tabla.')
+
+        # Asignaturas que el profesor imparte en el grupo elegido. El
+        # superusuario no tiene asignaciones, asi que no se le restringe.
+        asignadas = None
+        if self.usuario is not None and self.usuario.es_profesor and self.grupo is not None:
+            asignadas = set(
+                AsignacionDocente.objects
+                .filter(grupo=self.grupo, profesor=self.usuario)
+                .values_list('categoria_id', flat=True)
+            )
 
         for datos in renglones:
             categoria = datos['categoria']
             numero = datos.get('numero_preguntas')
 
-            # Todas las categorias deben ser de la materia elegida.
+            # Todas las asignaturas deben ser de la disciplina elegida.
             if self.materia is not None and categoria.materia_id != self.materia.id:
                 raise forms.ValidationError(
-                    f'La categoría {categoria.nombre} no pertenece a la materia elegida.'
+                    f'La asignatura {categoria.nombre} no pertenece a la disciplina elegida.'
+                )
+
+            # Y el profesor debe impartirla en ese grupo.
+            if asignadas is not None and categoria.id not in asignadas:
+                raise forms.ValidationError(
+                    f'No impartes la asignatura {categoria.nombre} en el grupo elegido.'
                 )
 
             if not numero or numero < 1:
                 raise forms.ValidationError(
-                    f'La categoría {categoria.nombre} debe pedir al menos una pregunta.'
+                    f'La asignatura {categoria.nombre} debe pedir al menos una pregunta.'
                 )
 
             # Debe haber preguntas suficientes en el banco. Solo cuentan las
@@ -128,7 +165,7 @@ class BaseCategoriasFormSet(BaseInlineFormSet):
             disponibles = Pregunta.objects.utilizables().filter(categoria=categoria).count()
             if disponibles < numero:
                 raise forms.ValidationError(
-                    f'La categoría {categoria.nombre} solo tiene {disponibles} '
+                    f'La asignatura {categoria.nombre} solo tiene {disponibles} '
                     f'preguntas disponibles.'
                 )
 

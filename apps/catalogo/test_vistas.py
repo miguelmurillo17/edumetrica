@@ -379,13 +379,30 @@ class RevisarPreguntaTest(BaseCatalogoTest):
             'catalogo:revisar_pregunta', args=[pregunta.id]
         ))
 
+    def test_editar_arma_el_procedimiento_numerado(self):
+        # Los pasos que se capturan por separado se guardan como un solo texto,
+        # numerado y un paso por linea.
+        pregunta = self.crear_pregunta()
+
+        self.client.post(
+            reverse('catalogo:editar_pregunta', args=[pregunta.id]),
+            self.datos_de_edicion(pregunta),
+        )
+
+        pregunta.refresh_from_db()
+        self.assertEqual(
+            pregunta.procedimiento,
+            '1. Primero multiplicas.\n2. Luego sumas.',
+        )
+
     def datos_de_edicion(self, pregunta):
         """Arma el envio completo del formulario de la pregunta y sus opciones."""
         datos = {
             'categoria': self.categoria.id,
             'nivel': self.nivel.id,
             'enunciado': 'Un enunciado corregido a mano.',
-            'procedimiento': 'Primero multiplicas y luego sumas.',
+            # El procedimiento ahora se captura por pasos, un valor por renglon.
+            'paso': ['Primero multiplicas.', 'Luego sumas.'],
             'opciones-TOTAL_FORMS': '4',
             'opciones-INITIAL_FORMS': '4',
             'opciones-MIN_NUM_FORMS': '0',
@@ -432,3 +449,56 @@ class FiltroDelListadoTest(BaseCatalogoTest):
         )
         self.assertEqual(len(respuesta.context['preguntas']), 2)
         self.assertEqual(respuesta.context['estado'], '')
+
+    def test_filtra_por_origen(self):
+        # Las dos de setUp son de IA; se agrega una capturada a mano.
+        manual = self.crear_pregunta(
+            origen=Pregunta.Origen.MANUAL, enunciado='Capturada a mano.'
+        )
+        respuesta = self.client.get(
+            reverse('catalogo:lista_preguntas'), {'origen': 'manual'}
+        )
+        self.assertEqual(list(respuesta.context['preguntas']), [manual])
+
+    def test_filtra_por_materia(self):
+        otra_materia = Materia.objects.create(nombre='Física')
+        otra_categoria = Categoria.objects.create(
+            materia=otra_materia, nombre='Cinemática'
+        )
+        de_fisica = self.crear_pregunta(
+            materia=otra_materia, categoria=otra_categoria,
+            enunciado='Una de física.'
+        )
+        respuesta = self.client.get(
+            reverse('catalogo:lista_preguntas'), {'materia': otra_materia.id}
+        )
+        self.assertEqual(list(respuesta.context['preguntas']), [de_fisica])
+
+    def test_filtra_por_nivel(self):
+        otro_nivel = Nivel.objects.create(numero=5, nombre='Avanzado')
+        avanzada = self.crear_pregunta(
+            nivel=otro_nivel, enunciado='Una avanzada.'
+        )
+        respuesta = self.client.get(
+            reverse('catalogo:lista_preguntas'), {'nivel': otro_nivel.id}
+        )
+        self.assertEqual(list(respuesta.context['preguntas']), [avanzada])
+
+    def test_ordena_por_nivel_descendente(self):
+        otro_nivel = Nivel.objects.create(numero=6, nombre='Superior')
+        superior = self.crear_pregunta(
+            nivel=otro_nivel, enunciado='La del nivel mas alto.'
+        )
+        respuesta = self.client.get(
+            reverse('catalogo:lista_preguntas'),
+            {'orden': 'nivel', 'dir': 'desc'},
+        )
+        # El nivel 6 (recien creado) debe quedar antes que los de nivel 2.
+        self.assertEqual(respuesta.context['preguntas'][0], superior)
+        self.assertEqual(respuesta.context['direccion'], 'desc')
+
+    def test_un_orden_inventado_se_ignora(self):
+        respuesta = self.client.get(
+            reverse('catalogo:lista_preguntas'), {'orden': 'lo-que-sea'}
+        )
+        self.assertEqual(respuesta.context['orden'], '')

@@ -14,10 +14,11 @@ class PreguntaForm(forms.ModelForm):
 
     class Meta:
         model = Pregunta
-        fields = ['categoria', 'nivel', 'enunciado', 'procedimiento', 'imagen']
+        # El procedimiento no va aqui: se captura paso a paso en la plantilla y
+        # la vista lo arma antes de guardar. Ver apps.catalogo.procedimientos.
+        fields = ['categoria', 'nivel', 'enunciado', 'imagen']
         widgets = {
             'enunciado': forms.Textarea(attrs={'rows': 3}),
-            'procedimiento': forms.Textarea(attrs={'rows': 4}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -27,14 +28,9 @@ class PreguntaForm(forms.ModelForm):
             Categoria.objects.filter(activa=True).select_related('materia')
         )
         self.fields['nivel'].queryset = Nivel.objects.all()
-        self.fields['categoria'].label = 'Categoría'
+        self.fields['categoria'].label = 'Asignatura'
         self.fields['nivel'].label = 'Nivel'
         self.fields['enunciado'].label = 'Enunciado de la pregunta'
-        self.fields['procedimiento'].label = 'Procedimiento (opcional)'
-        self.fields['procedimiento'].help_text = (
-            'Los pasos para llegar al resultado. El alumno los ve al terminar '
-            'la evaluación, solo en las preguntas que falló.'
-        )
         self.fields['imagen'].label = 'Imagen de la pregunta (opcional)'
 
 
@@ -47,8 +43,8 @@ class GenerarPreguntaForm(forms.Form):
 
     categoria = forms.ModelChoiceField(
         queryset=Categoria.objects.none(),
-        label='Categoría',
-        help_text='La materia se toma de la categoría que elijas.',
+        label='Asignatura',
+        help_text='La disciplina se toma de la asignatura que elijas.',
     )
     nivel = forms.ModelChoiceField(
         queryset=Nivel.objects.none(),

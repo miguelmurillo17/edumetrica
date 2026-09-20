@@ -19,7 +19,7 @@ from apps.catalogo.models import (
     Categoria, Institucion, Materia, Nivel, OpcionRespuesta, Pregunta,
 )
 from apps.evaluaciones.models import (
-    Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno,
+    AsignacionDocente, Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno,
 )
 from apps.usuarios.models import Persona
 
@@ -61,8 +61,12 @@ class BaseTableroTest(TestCase):
         self.segundo = Grupo.objects.create(
             nombre='Segundo B', institucion=self.institucion
         )
-        self.primero.profesores.add(self.profesor)
-        self.segundo.profesores.add(self.profesor)
+        # El profesor imparte ambas asignaturas en ambos grupos.
+        for grupo in (self.primero, self.segundo):
+            for categoria in (self.aritmetica, self.comprension):
+                AsignacionDocente.objects.create(
+                    grupo=grupo, profesor=self.profesor, categoria=categoria
+                )
 
     def crear_alumno(self, correo, *, sexo='', edad=None, grupo=None):
         nacimiento = None
@@ -427,7 +431,7 @@ class ExportarCsvTest(BaseTableroTest):
         encabezado = self.renglones(self.exportar())[0]
 
         self.assertEqual(encabezado, [
-            'Alumno', 'Grupo', 'Materia', 'Evaluación', 'Calificación', 'Fecha',
+            'Alumno', 'Grupo', 'Disciplina', 'Evaluación', 'Calificación', 'Fecha',
         ])
 
     def test_un_renglon_por_intento_finalizado(self):

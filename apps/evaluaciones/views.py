@@ -63,16 +63,29 @@ def presentar_evaluacion(request, evaluacion_id):
 @login_required
 @roles_permitidos(Persona.Rol.PROFESOR, Persona.Rol.ADMINISTRADOR)
 def lista_grupos(request):
-    """Muestra los grupos del profesor con los alumnos que tiene cada uno."""
+    """Muestra los grupos con sus alumnos y que asignatura imparte cada profesor."""
     grupos = (
         Grupo.objects
-        .prefetch_related('alumnos', 'profesores')
+        .prefetch_related('alumnos', 'asignaciones__profesor', 'asignaciones__categoria')
         .select_related('institucion')
     )
 
     # El profesor solo ve los grupos que le asignaron; el administrador todos.
+    # distinct() porque el through repite el grupo por cada asignatura.
     if request.user.es_profesor:
-        grupos = grupos.filter(profesores=request.user)
+        grupos = grupos.filter(profesores=request.user).distinct()
+
+    # Se agrupan las asignaciones por profesor para mostrar "Fulano - Asig1, Asig2".
+    grupos = list(grupos)
+    for grupo in grupos:
+        docentes = {}
+        for asignacion in grupo.asignaciones.all():
+            ficha = docentes.setdefault(
+                asignacion.profesor_id,
+                {'profesor': asignacion.profesor, 'asignaturas': []},
+            )
+            ficha['asignaturas'].append(asignacion.categoria.nombre)
+        grupo.docentes = list(docentes.values())
 
     return render(request, 'evaluaciones/lista_grupos.html', {'grupos': grupos})
 
@@ -153,11 +166,16 @@ def crear_evaluacion(request):
     if request.method == 'POST':
         formulario = EvaluacionForm(request.POST, usuario=request.user)
         filas = CategoriaEvaluacionFormSet(request.POST)
+        # Se fija antes de validar/renderizar: limita el desplegable de
+        # asignaturas a las que imparte el profesor (ver add_fields del formset).
+        filas.usuario = request.user
 
-        # La materia vive en el otro formulario, pero la tabla la necesita
-        # para revisar que las categorias capturadas le correspondan.
+        # La materia y el grupo viven en el otro formulario, pero la tabla los
+        # necesita para revisar que las asignaturas capturadas le correspondan
+        # al profesor en ese grupo.
         formulario_valido = formulario.is_valid()
         filas.materia = formulario.cleaned_data.get('materia') if formulario_valido else None
+        filas.grupo = formulario.cleaned_data.get('grupo') if formulario_valido else None
 
         if formulario_valido and filas.is_valid():
             evaluacion = formulario.save(commit=False)
@@ -188,6 +206,7 @@ def crear_evaluacion(request):
     else:
         formulario = EvaluacionForm(usuario=request.user)
         filas = CategoriaEvaluacionFormSet()
+        filas.usuario = request.user
 
     contexto = {'formulario': formulario, 'filas': filas}
     return render(request, 'evaluaciones/crear_evaluacion.html', contexto)

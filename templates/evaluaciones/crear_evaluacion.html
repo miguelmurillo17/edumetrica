@@ -33,8 +33,8 @@
         </div>
 
         <div class="campo">
-            <label>Categorías y número de preguntas</label>
-            <p class="ayuda">Agrega un renglón por cada categoría de la que quieras
+            <label>Asignaturas y número de preguntas</label>
+            <p class="ayuda">Agrega un renglón por cada asignatura de la que quieras
                sacar preguntas. Debe haber al menos uno.</p>
 
             {% if filas.non_form_errors %}
@@ -46,7 +46,7 @@
             <table class="tabla tabla-categorias">
                 <thead>
                     <tr>
-                        <th>Categoría</th>
+                        <th>Asignatura</th>
                         <th class="columna-numero">Preguntas</th>
                         <th class="columna-icono"></th>
                     </tr>
@@ -78,7 +78,7 @@
             </table>
 
             <button type="button" class="boton-secundario" id="agregar-categoria">
-                Agregar categoría
+                Agregar asignatura
             </button>
 
             {# Molde que copia el navegador cada vez que se agrega un renglon. #}

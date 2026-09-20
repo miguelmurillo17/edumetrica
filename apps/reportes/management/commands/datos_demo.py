@@ -16,7 +16,8 @@ from django.utils import timezone
 
 from apps.catalogo.models import Materia, Categoria, Nivel, Pregunta, OpcionRespuesta
 from apps.evaluaciones.models import (
-    Grupo, Evaluacion, CategoriaEvaluacion, IntentoEvaluacion, RespuestaAlumno,
+    Grupo, AsignacionDocente, Evaluacion, CategoriaEvaluacion,
+    IntentoEvaluacion, RespuestaAlumno,
 )
 
 Persona = get_user_model()
@@ -51,7 +52,7 @@ class Command(BaseCommand):
         self.crear_niveles()
         categorias = self.crear_materias()
         profesor = self.obtener_profesor()
-        grupos = self.crear_grupos_y_alumnos(profesor)
+        grupos = self.crear_grupos_y_alumnos(profesor, categorias)
         preguntas_por_materia = self.crear_preguntas(categorias, profesor)
         self.crear_evaluaciones_e_intentos(profesor, grupos, preguntas_por_materia)
         self.crear_evaluacion_disponible(profesor, grupos[0], preguntas_por_materia)
@@ -83,7 +84,7 @@ class Command(BaseCommand):
             )
         return profesor
 
-    def crear_grupos_y_alumnos(self, profesor):
+    def crear_grupos_y_alumnos(self, profesor, categorias):
         """Crea dos grupos con alumnos que tienen edad y sexo variados."""
         grupos = []
         sexos = [Persona.Sexo.MASCULINO, Persona.Sexo.FEMENINO, Persona.Sexo.OTRO]
@@ -91,7 +92,12 @@ class Command(BaseCommand):
 
         for indice_grupo in range(2):
             grupo, _ = Grupo.objects.get_or_create(nombre=f'Primero {chr(65 + indice_grupo)}')
-            grupo.profesores.add(profesor)
+            # El profesor imparte todas las asignaturas del catalogo demo en el
+            # grupo, para poder programar evaluaciones de ambas disciplinas.
+            for categoria in categorias:
+                AsignacionDocente.objects.get_or_create(
+                    grupo=grupo, profesor=profesor, categoria=categoria
+                )
 
             for _ in range(6):
                 nombre, apellido = NOMBRES[contador - 1]

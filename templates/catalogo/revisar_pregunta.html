@@ -47,7 +47,7 @@
     <p class="datos-evaluacion">
         {{ pregunta.materia.nombre }} · {{ pregunta.categoria.nombre }} ·
         Nivel {{ pregunta.nivel.numero }} ({{ pregunta.nivel.nombre }}) ·
-        Estado: {{ pregunta.get_estado_display }}
+        Estado: <span class="estado estado-{{ pregunta.estado }}">{{ pregunta.get_estado_display }}</span>
     </p>
 
     <h2>Enunciado</h2>

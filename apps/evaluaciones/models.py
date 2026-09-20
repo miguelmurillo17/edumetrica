@@ -27,9 +27,12 @@ class Grupo(models.Model):
         related_name='grupos',
         blank=True,
     )
-    # Profesores que imparten en el grupo. Un grupo puede tener varios.
+    # Profesores que imparten en el grupo. La relacion pasa por AsignacionDocente,
+    # que ademas guarda que asignatura imparte cada quien. Un profesor con varias
+    # asignaturas aparece varias veces, por eso se usa distinct() al consultarlos.
     profesores = models.ManyToManyField(
         settings.AUTH_USER_MODEL,
+        through='AsignacionDocente',
         related_name='grupos_asignados',
         blank=True,
     )
@@ -42,6 +45,42 @@ class Grupo(models.Model):
 
     def __str__(self):
         return self.nombre
+
+
+class AsignacionDocente(models.Model):
+    """Que asignatura imparte un profesor en un grupo.
+
+    Es la tabla intermedia entre Grupo y sus profesores, pero con un dato mas:
+    la categoria (asignatura). Asi se puede decir "Fulano imparte Calculo
+    diferencial II al Grupo 608" en lugar del generico "imparte Matematicas".
+    """
+
+    grupo = models.ForeignKey(
+        Grupo,
+        on_delete=models.CASCADE,
+        related_name='asignaciones',
+    )
+    profesor = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='asignaciones',
+    )
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.CASCADE,
+        related_name='asignaciones',
+        verbose_name='asignatura',
+    )
+
+    class Meta:
+        verbose_name = 'asignación docente'
+        verbose_name_plural = 'asignaciones docentes'
+        ordering = ['grupo', 'profesor', 'categoria']
+        # Un profesor imparte una asignatura en un grupo una sola vez.
+        unique_together = ['grupo', 'profesor', 'categoria']
+
+    def __str__(self):
+        return f'{self.profesor.nombre_completo} - {self.categoria.nombre} ({self.grupo.nombre})'
 
 
 class Evaluacion(models.Model):
@@ -67,6 +106,7 @@ class Evaluacion(models.Model):
         Materia,
         on_delete=models.PROTECT,
         related_name='evaluaciones',
+        verbose_name='disciplina',
     )
     # Preguntas concretas que se arman al momento de programar la evaluacion.
     preguntas = models.ManyToManyField(
@@ -116,12 +156,13 @@ class CategoriaEvaluacion(models.Model):
         Categoria,
         on_delete=models.PROTECT,
         related_name='evaluaciones',
+        verbose_name='asignatura',
     )
     numero_preguntas = models.PositiveSmallIntegerField()
 
     class Meta:
-        verbose_name = 'categoría de la evaluación'
-        verbose_name_plural = 'categorías de la evaluación'
+        verbose_name = 'asignatura de la evaluación'
+        verbose_name_plural = 'asignaturas de la evaluación'
         # Una categoria no se puede repetir dentro de la misma evaluacion.
         constraints = [
             models.UniqueConstraint(

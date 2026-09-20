@@ -17,9 +17,22 @@
 
         <p class="datos-grupo">
             Institución: {{ grupo.institucion.nombre|default:"sin institución" }} &middot;
-            Alumnos: {{ grupo.alumnos.all|length }} &middot;
-            Profesores: {% for profesor in grupo.profesores.all %}{{ profesor.nombre_completo }}{% if not forloop.last %}, {% endif %}{% empty %}sin profesores{% endfor %}
+            Alumnos: {{ grupo.alumnos.all|length }}
         </p>
+
+        <p class="datos-grupo">Plantilla docente:</p>
+        {% if grupo.docentes %}
+        <ul class="lista-docentes">
+            {% for ficha in grupo.docentes %}
+            <li>
+                <strong>{{ ficha.profesor.nombre_completo }}</strong>
+                &mdash; {{ ficha.asignaturas|join:", " }}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p class="datos-grupo">Sin profesores asignados.</p>
+        {% endif %}
 
         {% if grupo.alumnos.all %}
         <table class="tabla">

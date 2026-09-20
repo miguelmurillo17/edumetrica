@@ -10,7 +10,7 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth import get_user_model
 
 from apps.catalogo.models import Institucion, Materia, Categoria, Nivel
-from apps.evaluaciones.models import Grupo
+from apps.evaluaciones.models import Grupo, AsignacionDocente
 
 Persona = get_user_model()
 
@@ -95,7 +95,12 @@ class Command(BaseCommand):
         profesor = Persona.objects.filter(correo='profesor@edumetrica.mx').first()
         alumno = Persona.objects.filter(correo='alumno@edumetrica.mx').first()
         if profesor:
-            grupo.profesores.add(profesor)
+            # El profesor imparte la asignatura de ejemplo en el grupo.
+            categoria = Categoria.objects.filter(nombre='Aritmética').first()
+            if categoria:
+                AsignacionDocente.objects.get_or_create(
+                    grupo=grupo, profesor=profesor, categoria=categoria
+                )
         if alumno:
             grupo.alumnos.add(alumno)
         self.stdout.write('Grupo de ejemplo listo.')

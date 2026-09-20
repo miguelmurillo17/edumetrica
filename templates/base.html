@@ -39,5 +39,21 @@
     </main>
 
     {% block scripts %}{% endblock %}
+
+    <script>
+        // Pide confirmacion antes de cerrar la sesion, para que no se salga por
+        // un clic sin querer.
+        (function () {
+            const forma = document.querySelector('.forma-salir');
+            if (!forma) {
+                return;
+            }
+            forma.addEventListener('submit', function (evento) {
+                if (!window.confirm('¿Seguro que quieres cerrar la sesión?')) {
+                    evento.preventDefault();
+                }
+            });
+        })();
+    </script>
 </body>
 </html>

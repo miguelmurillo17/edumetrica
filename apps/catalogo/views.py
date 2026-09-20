@@ -1,5 +1,7 @@
 """Vistas para que el profesor administre el catalogo de preguntas."""
 
+from urllib.parse import urlencode
+
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -10,8 +12,9 @@ from django.views.decorators.http import require_POST
 from apps.usuarios.models import Persona
 from apps.usuarios.decoradores import roles_permitidos
 
-from .models import Pregunta, SolicitudGeneracion
+from .models import Categoria, Materia, Nivel, Pregunta, SolicitudGeneracion
 from .forms import GenerarPreguntaForm, PreguntaForm, OpcionRespuestaFormSet
+from .procedimientos import pasos_a_texto, texto_a_pasos
 from .servicios import (
     alcanzo_el_tope,
     hay_llave_configurada,
@@ -33,14 +36,30 @@ AVISO_TOPE = (
 )
 
 
+# Columnas por las que se puede ordenar el listado: la clave es la que viaja en
+# la URL y el valor es el campo real por el que ordena la base de datos.
+ORDEN_PREGUNTAS = {
+    'materia': 'materia__nombre',
+    'categoria': 'categoria__nombre',
+    'nivel': 'nivel__numero',
+    'estado': 'estado',
+    'origen': 'origen',
+}
+
+
 @login_required
 @roles_permitidos(*ROLES_CATALOGO)
 def lista_preguntas(request):
-    """Muestra el listado de preguntas, con filtro por estado.
+    """Muestra el listado de preguntas, con filtros y ordenamiento.
 
-    El filtro que importa es el de borradores: son las preguntas generadas que
-    estan esperando a que alguien las revise, y sin el se pierden entre las
-    demas conforme crece el banco.
+    Se puede acotar por materia, categoria, nivel, estado y origen, y ordenar
+    por cualquiera de esas columnas. Todo se resuelve en el servidor -asi
+    funciona sin JavaScript y se puede compartir por la URL-; el buscador que
+    resalta palabras si vive en el navegador, sobre los renglones ya filtrados.
+
+    El filtro que mas importa es el de borradores: son las preguntas generadas
+    que esperan revision, y sin el se pierden entre las demas conforme crece el
+    banco.
     """
     preguntas = (
         Pregunta.objects
@@ -48,16 +67,102 @@ def lista_preguntas(request):
         .all()
     )
 
+    # Filtros. Cada uno se queda vacio si lo que llega no es valido, para que la
+    # pantalla no se rompa con un parametro inventado en la URL.
     estado = request.GET.get('estado', '')
     if estado in Pregunta.Estado.values:
         preguntas = preguntas.filter(estado=estado)
     else:
         estado = ''
 
+    origen = request.GET.get('origen', '')
+    if origen in Pregunta.Origen.values:
+        preguntas = preguntas.filter(origen=origen)
+    else:
+        origen = ''
+
+    materia_id = request.GET.get('materia', '')
+    if materia_id.isdigit():
+        preguntas = preguntas.filter(materia_id=materia_id)
+    else:
+        materia_id = ''
+
+    categoria_id = request.GET.get('categoria', '')
+    if categoria_id.isdigit():
+        preguntas = preguntas.filter(categoria_id=categoria_id)
+    else:
+        categoria_id = ''
+
+    nivel_id = request.GET.get('nivel', '')
+    if nivel_id.isdigit():
+        preguntas = preguntas.filter(nivel_id=nivel_id)
+    else:
+        nivel_id = ''
+
+    # Ordenamiento. Sin orden explicito se respeta el del modelo (mas reciente
+    # primero); el id al final desempata para que la lista no baile entre cargas.
+    orden = request.GET.get('orden', '')
+    direccion = request.GET.get('dir', 'asc')
+    if direccion not in ('asc', 'desc'):
+        direccion = 'asc'
+    if orden in ORDEN_PREGUNTAS:
+        campo = ORDEN_PREGUNTAS[orden]
+        if direccion == 'desc':
+            campo = '-' + campo
+        preguntas = preguntas.order_by(campo, 'id')
+    else:
+        orden = ''
+        direccion = 'asc'
+
+    # Filtros vigentes, para conservarlos al armar los enlaces de ordenamiento.
+    filtros_activos = {}
+    if estado:
+        filtros_activos['estado'] = estado
+    if origen:
+        filtros_activos['origen'] = origen
+    if materia_id:
+        filtros_activos['materia'] = materia_id
+    if categoria_id:
+        filtros_activos['categoria'] = categoria_id
+    if nivel_id:
+        filtros_activos['nivel'] = nivel_id
+
+    # Para cada columna ordenable se arma su enlace (conservando los filtros) y
+    # se marca si es la que ordena ahora, para pintarle la flecha en la cabecera.
+    columnas_orden = {}
+    for clave in ORDEN_PREGUNTAS:
+        parametros = dict(filtros_activos)
+        parametros['orden'] = clave
+        if orden == clave and direccion == 'asc':
+            parametros['dir'] = 'desc'
+            indicador = 'asc'
+        elif orden == clave and direccion == 'desc':
+            parametros['dir'] = 'asc'
+            indicador = 'desc'
+        else:
+            parametros['dir'] = 'asc'
+            indicador = ''
+        columnas_orden[clave] = {
+            'url': '?' + urlencode(parametros),
+            'indicador': indicador,
+        }
+
     contexto = {
         'preguntas': preguntas,
         'estado': estado,
+        'origen': origen,
+        'materia_id': materia_id,
+        'categoria_id': categoria_id,
+        'nivel_id': nivel_id,
         'estados': Pregunta.Estado.choices,
+        'origenes': Pregunta.Origen.choices,
+        'materias': Materia.objects.all(),
+        'categorias': Categoria.objects.select_related('materia').all(),
+        'niveles': Nivel.objects.all(),
+        'orden': orden,
+        'direccion': direccion,
+        'columnas_orden': columnas_orden,
+        'hay_filtros': bool(filtros_activos),
         'borradores': Pregunta.objects.filter(
             estado=Pregunta.Estado.BORRADOR
         ).count(),
@@ -223,6 +328,8 @@ def crear_pregunta(request):
             # La escribio una persona, asi que no necesita pasar por revision.
             pregunta.origen = Pregunta.Origen.MANUAL
             pregunta.estado = Pregunta.Estado.VALIDADA
+            # El procedimiento se arma con los pasos capturados, numerado.
+            pregunta.procedimiento = pasos_a_texto(request.POST.getlist('paso'))
             pregunta.save()
 
             # Una vez guardada la pregunta se le asocian sus opciones.
@@ -231,11 +338,14 @@ def crear_pregunta(request):
 
             messages.success(request, 'La pregunta se guardo correctamente.')
             return redirect('catalogo:lista_preguntas')
+        # Al recargar por un error se conserva lo que ya habia tecleado.
+        pasos = request.POST.getlist('paso')
     else:
         formulario = PreguntaForm()
         opciones = OpcionRespuestaFormSet()
+        pasos = []
 
-    contexto = {'formulario': formulario, 'opciones': opciones}
+    contexto = {'formulario': formulario, 'opciones': opciones, 'pasos': pasos}
     return render(request, 'catalogo/formulario_pregunta.html', contexto)
 
 
@@ -253,6 +363,8 @@ def editar_pregunta(request, pregunta_id):
             pregunta = formulario.save(commit=False)
             # La materia se vuelve a deducir por si le cambiaron la categoria.
             pregunta.materia = pregunta.categoria.materia
+            # El procedimiento se rehace con los pasos capturados, numerado.
+            pregunta.procedimiento = pasos_a_texto(request.POST.getlist('paso'))
             pregunta.save()
             opciones.save()
 
@@ -262,9 +374,18 @@ def editar_pregunta(request, pregunta_id):
             if pregunta.estado == Pregunta.Estado.BORRADOR:
                 return redirect('catalogo:revisar_pregunta', pregunta_id=pregunta.id)
             return redirect('catalogo:lista_preguntas')
+        # Al recargar por un error se conserva lo que ya habia tecleado.
+        pasos = request.POST.getlist('paso')
     else:
         formulario = PreguntaForm(instance=pregunta)
         opciones = OpcionRespuestaFormSet(instance=pregunta)
+        # Los pasos guardados se vuelven a repartir en un campo por paso.
+        pasos = texto_a_pasos(pregunta.procedimiento)
 
-    contexto = {'formulario': formulario, 'opciones': opciones, 'pregunta': pregunta}
+    contexto = {
+        'formulario': formulario,
+        'opciones': opciones,
+        'pregunta': pregunta,
+        'pasos': pasos,
+    }
     return render(request, 'catalogo/formulario_pregunta.html', contexto)

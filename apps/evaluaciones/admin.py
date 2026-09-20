@@ -2,7 +2,20 @@
 
 from django.contrib import admin
 
-from .models import Grupo, Evaluacion, CategoriaEvaluacion, IntentoEvaluacion, RespuestaAlumno
+from .models import (
+    Grupo,
+    AsignacionDocente,
+    Evaluacion,
+    CategoriaEvaluacion,
+    IntentoEvaluacion,
+    RespuestaAlumno,
+)
+
+
+class AsignacionDocenteInline(admin.TabularInline):
+    """Que asignatura imparte cada profesor en el grupo."""
+    model = AsignacionDocente
+    extra = 1
 
 
 @admin.register(Grupo)
@@ -10,8 +23,10 @@ class GrupoAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'institucion', 'activo')
     list_filter = ('activo', 'institucion')
     search_fields = ('nombre',)
-    # Facilita asignar muchos alumnos y profesores al grupo.
-    filter_horizontal = ('alumnos', 'profesores')
+    # Facilita asignar muchos alumnos al grupo; los profesores y su asignatura
+    # se capturan en la tabla de asignaciones de abajo.
+    filter_horizontal = ('alumnos',)
+    inlines = [AsignacionDocenteInline]
 
 
 class CategoriaEvaluacionInline(admin.TabularInline):

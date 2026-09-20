@@ -145,7 +145,7 @@ def exportar_csv(request):
     respuesta.write('﻿')
 
     escritor = csv.writer(respuesta)
-    escritor.writerow(['Alumno', 'Grupo', 'Materia', 'Evaluación', 'Calificación', 'Fecha'])
+    escritor.writerow(['Alumno', 'Grupo', 'Disciplina', 'Evaluación', 'Calificación', 'Fecha'])
     for intento in intentos:
         escritor.writerow([
             intento.alumno.nombre_completo,

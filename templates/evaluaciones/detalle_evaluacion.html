@@ -11,7 +11,7 @@
         {{ evaluacion.numero_preguntas }} preguntas
     </p>
     <p>
-        Estado: <strong>{{ evaluacion.get_estado_display }}</strong>
+        Estado: <span class="estado estado-{{ evaluacion.estado }}">{{ evaluacion.get_estado_display }}</span>
         {% if evaluacion.finalizada_anticipadamente %}
         <span class="estado estado-anticipada">Finalizada anticipadamente</span>
         {% endif %}
@@ -43,9 +43,9 @@
             <tr>
                 <td>{{ fila.alumno.nombre_completo }}</td>
                 <td>
-                    {% if fila.situacion == 'finalizado' %}Finalizado
-                    {% elif fila.situacion == 'en_curso' %}En curso
-                    {% else %}No iniciado{% endif %}
+                    {% if fila.situacion == 'finalizado' %}<span class="estado estado-finalizada">Finalizado</span>
+                    {% elif fila.situacion == 'en_curso' %}<span class="estado estado-activo">En curso</span>
+                    {% else %}<span class="estado">No iniciado</span>{% endif %}
                 </td>
                 <td>
                     {% if fila.intento and fila.intento.calificacion is not None %}

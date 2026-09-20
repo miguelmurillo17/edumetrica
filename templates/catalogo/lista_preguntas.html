@@ -14,28 +14,123 @@
         </div>
     </div>
 
-    <div class="filtros-lista">
-        <span>Ver:</span>
-        <a class="{% if not estado %}filtro-activo{% endif %}" href="{% url 'catalogo:lista_preguntas' %}">Todas</a>
-        {% for clave, etiqueta in estados %}
-        <a class="{% if estado == clave %}filtro-activo{% endif %}" href="?estado={{ clave }}">{{ etiqueta }}</a>
-        {% endfor %}
-        {% if borradores %}
-        <span class="ayuda">{{ borradores }} en espera de revisión.</span>
-        {% endif %}
-    </div>
+    {% if borradores %}
+    <p class="ayuda">{{ borradores }} en espera de revisión.</p>
+    {% endif %}
+
+    {% comment %}
+    Filtros del lado del servidor: viajan en la URL y funcionan sin JavaScript.
+    Se conserva el orden vigente con los campos ocultos.
+    {% endcomment %}
+    <form method="get" class="filtros" id="filtros-preguntas">
+        <input type="hidden" name="orden" value="{{ orden }}">
+        <input type="hidden" name="dir" value="{{ direccion }}">
+
+        <div class="campo-filtro">
+            <label for="filtro-materia">Disciplina</label>
+            <select name="materia" id="filtro-materia">
+                <option value="">Todas</option>
+                {% for materia in materias %}
+                <option value="{{ materia.id }}" {% if materia_id == materia.id|stringformat:'s' %}selected{% endif %}>{{ materia.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-categoria">Asignatura</label>
+            <select name="categoria" id="filtro-categoria">
+                <option value="">Todas</option>
+                {% for categoria in categorias %}
+                <option value="{{ categoria.id }}" {% if categoria_id == categoria.id|stringformat:'s' %}selected{% endif %}>{{ categoria.materia.nombre }} · {{ categoria.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-nivel">Nivel</label>
+            <select name="nivel" id="filtro-nivel">
+                <option value="">Todos</option>
+                {% for nivel in niveles %}
+                <option value="{{ nivel.id }}" {% if nivel_id == nivel.id|stringformat:'s' %}selected{% endif %}>Nivel {{ nivel.numero }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-estado">Estado</label>
+            <select name="estado" id="filtro-estado">
+                <option value="">Todos</option>
+                {% for clave, etiqueta in estados %}
+                <option value="{{ clave }}" {% if estado == clave %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-origen">Origen</label>
+            <select name="origen" id="filtro-origen">
+                <option value="">Todos</option>
+                {% for clave, etiqueta in origenes %}
+                <option value="{{ clave }}" {% if origen == clave %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro acciones-filtro">
+            <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
+            {% if hay_filtros %}
+            <a class="boton-secundario boton-compacto" href="{% url 'catalogo:lista_preguntas' %}">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
 
     {% if preguntas %}
-    <table class="tabla">
+    {% comment %}
+    Barra de la tabla: el buscador vive aqui y trabaja en el navegador sobre los
+    renglones que el servidor ya filtro y ordeno.
+    {% endcomment %}
+    <div class="barra-tabla">
+        <input type="search" id="buscador-tabla" class="buscador-tabla"
+               placeholder="Buscar en la tabla..." autocomplete="off"
+               aria-label="Buscar palabras en la tabla">
+        <span class="conteo-tabla" id="conteo-tabla"></span>
+    </div>
+
+    <table class="tabla" id="tabla-preguntas">
         <thead>
             <tr>
                 <th class="columna-icono"></th>
                 <th>Enunciado</th>
-                <th>Materia</th>
-                <th>Categoría</th>
-                <th>Nivel</th>
-                <th>Estado</th>
-                <th>Origen</th>
+                <th>
+                    <a class="orden{% if columnas_orden.materia.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.materia.url }}">
+                        Disciplina
+                        <span class="flecha-orden">{% if columnas_orden.materia.indicador == 'asc' %}&#8593;{% elif columnas_orden.materia.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.categoria.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.categoria.url }}">
+                        Asignatura
+                        <span class="flecha-orden">{% if columnas_orden.categoria.indicador == 'asc' %}&#8593;{% elif columnas_orden.categoria.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.nivel.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.nivel.url }}">
+                        Nivel
+                        <span class="flecha-orden">{% if columnas_orden.nivel.indicador == 'asc' %}&#8593;{% elif columnas_orden.nivel.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.estado.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.estado.url }}">
+                        Estado
+                        <span class="flecha-orden">{% if columnas_orden.estado.indicador == 'asc' %}&#8593;{% elif columnas_orden.estado.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.origen.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.origen.url }}">
+                        Origen
+                        <span class="flecha-orden">{% if columnas_orden.origen.indicador == 'asc' %}&#8593;{% elif columnas_orden.origen.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
             </tr>
         </thead>
         <tbody>
@@ -61,7 +156,12 @@
                 </td>
                 <td>
                     {{ pregunta.get_origen_display }}
-                    {% if pregunta.origen == 'ia' %}
+                    {% comment %}
+                    El enlace de revisar solo aplica mientras la pregunta de IA
+                    sigue en borrador. Ya validada o descartada, el origen sigue
+                    siendo IA pero no queda nada que revisar.
+                    {% endcomment %}
+                    {% if pregunta.origen == 'ia' and pregunta.estado == 'borrador' %}
                     <a href="{% url 'catalogo:revisar_pregunta' pregunta.id %}">Revisar</a>
                     {% endif %}
                 </td>
@@ -69,10 +169,136 @@
             {% endfor %}
         </tbody>
     </table>
-    {% elif estado %}
-    <p>No hay preguntas en ese estado.</p>
+
+    <p id="sin-resultados-busqueda" class="ayuda" hidden>
+        Ninguna pregunta coincide con la búsqueda.
+    </p>
+    {% elif hay_filtros %}
+    <p>No hay preguntas que cumplan los filtros elegidos.</p>
     {% else %}
     <p>Todavía no hay preguntas registradas. Da de alta la primera.</p>
     {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Buscador con resaltado sobre la tabla ya filtrada por el servidor. Trabaja
+    // en el navegador porque busca en todas las columnas a la vez y pinta las
+    // coincidencias, algo que no tiene sentido resolver con una recarga.
+    (function () {
+        const buscador = document.getElementById('buscador-tabla');
+        const tabla = document.getElementById('tabla-preguntas');
+        if (!buscador || !tabla) {
+            return;
+        }
+        const renglones = Array.from(tabla.querySelectorAll('tbody tr'));
+        const aviso = document.getElementById('sin-resultados-busqueda');
+        const conteo = document.getElementById('conteo-tabla');
+        const total = renglones.length;
+
+        // Quita acentos y pasa a minusculas, para que "algebra" encuentre
+        // "Álgebra" y no dependa de mayusculas.
+        function normalizar(texto) {
+            return texto
+                .normalize('NFD')
+                .replace(/[̀-ͯ]/g, '')
+                .toLowerCase();
+        }
+
+        // Cada letra del termino se vuelve un grupo que acepta sus variantes con
+        // acento, para poder resaltar aunque el texto de la celda si los lleve.
+        const equivalentes = {
+            a: '[aáàäâã]', e: '[eéèëê]', i: '[iíìïî]',
+            o: '[oóòöô]', u: '[uúùüû]', n: '[nñ]', c: '[cç]',
+        };
+
+        function aExpresion(termino) {
+            const escapado = termino.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            let patron = '';
+            for (const letra of escapado) {
+                patron += equivalentes[letra] || letra;
+            }
+            return new RegExp(patron, 'gi');
+        }
+
+        // Guarda el contenido original de cada celda para poder rehacer el
+        // resaltado en cada tecla sin ir perdiendo el marcado anterior.
+        renglones.forEach(function (renglon) {
+            Array.from(renglon.cells).forEach(function (celda) {
+                celda.dataset.original = celda.innerHTML;
+            });
+            renglon.dataset.texto = normalizar(renglon.textContent);
+        });
+
+        function resaltarCelda(celda, expresiones) {
+            const paseador = document.createTreeWalker(celda, NodeFilter.SHOW_TEXT);
+            const nodos = [];
+            while (paseador.nextNode()) {
+                nodos.push(paseador.currentNode);
+            }
+            nodos.forEach(function (nodo) {
+                let coincide = false;
+                for (const expresion of expresiones) {
+                    expresion.lastIndex = 0;
+                    if (expresion.test(nodo.nodeValue)) {
+                        coincide = true;
+                        break;
+                    }
+                }
+                if (!coincide) {
+                    return;
+                }
+                let html = nodo.nodeValue.replace(/[&<>]/g, function (caracter) {
+                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[caracter];
+                });
+                for (const expresion of expresiones) {
+                    html = html.replace(expresion, '<mark class="resaltado">$&</mark>');
+                }
+                const envoltura = document.createElement('span');
+                envoltura.innerHTML = html;
+                nodo.replaceWith(envoltura);
+            });
+        }
+
+        function filtrar() {
+            const consulta = buscador.value.trim();
+            const terminos = normalizar(consulta).split(/\s+/).filter(Boolean);
+            let visibles = 0;
+
+            renglones.forEach(function (renglon) {
+                // Se parte del contenido original: limpia el resaltado anterior.
+                Array.from(renglon.cells).forEach(function (celda) {
+                    celda.innerHTML = celda.dataset.original;
+                });
+
+                const pasa = terminos.every(function (termino) {
+                    return renglon.dataset.texto.indexOf(termino) !== -1;
+                });
+                renglon.hidden = !pasa;
+                if (pasa) {
+                    visibles += 1;
+                }
+            });
+
+            if (terminos.length) {
+                const expresiones = terminos.map(aExpresion);
+                renglones.forEach(function (renglon) {
+                    if (!renglon.hidden) {
+                        Array.from(renglon.cells).forEach(function (celda) {
+                            resaltarCelda(celda, expresiones);
+                        });
+                    }
+                });
+                conteo.textContent = visibles + ' de ' + total;
+            } else {
+                conteo.textContent = '';
+            }
+
+            aviso.hidden = visibles !== 0;
+        }
+
+        buscador.addEventListener('input', filtrar);
+    })();
+</script>
 {% endblock %}

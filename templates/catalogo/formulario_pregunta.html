@@ -31,11 +31,58 @@
             {{ formulario.enunciado.errors }}
         </div>
 
-        <div class="campo">
-            <label for="{{ formulario.procedimiento.id_for_label }}">{{ formulario.procedimiento.label }}</label>
-            {{ formulario.procedimiento }}
-            <p class="ayuda">{{ formulario.procedimiento.help_text }}</p>
-            {{ formulario.procedimiento.errors }}
+        <div class="campo campo-pasos">
+            <label>Procedimiento (opcional)</label>
+            <p class="ayuda">Escribe un paso por renglón. El alumno los ve numerados
+               al terminar la evaluación, solo en las preguntas que falló. La
+               numeración se pone sola; tú solo describe cada paso.</p>
+
+            <div id="lista-pasos">
+                {% for paso in pasos %}
+                <div class="renglon-paso">
+                    <span class="numero-paso">{{ forloop.counter }}</span>
+                    <textarea name="paso" rows="1" class="entrada-paso"
+                              placeholder="Describe el paso">{{ paso }}</textarea>
+                    <button type="button" class="boton-icono boton-quitar-paso"
+                            title="Quitar paso" aria-label="Quitar paso">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                            <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+                {% empty %}
+                <div class="renglon-paso">
+                    <span class="numero-paso">1</span>
+                    <textarea name="paso" rows="1" class="entrada-paso"
+                              placeholder="Describe el paso"></textarea>
+                    <button type="button" class="boton-icono boton-quitar-paso"
+                            title="Quitar paso" aria-label="Quitar paso">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                            <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+                {% endfor %}
+            </div>
+
+            <button type="button" class="boton-secundario" id="agregar-paso">
+                Agregar paso
+            </button>
+
+            {# Molde que copia el navegador cada vez que se agrega un paso. #}
+            <template id="molde-paso">
+                <div class="renglon-paso">
+                    <span class="numero-paso"></span>
+                    <textarea name="paso" rows="1" class="entrada-paso"
+                              placeholder="Describe el paso"></textarea>
+                    <button type="button" class="boton-icono boton-quitar-paso"
+                            title="Quitar paso" aria-label="Quitar paso">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                            <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                        </svg>
+                    </button>
+                </div>
+            </template>
         </div>
 
         <div class="campo">
@@ -79,4 +126,73 @@
         </div>
     </form>
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Captura del procedimiento paso a paso: agregar y quitar renglones, y
+    // mantener la numeracion al dia. El sistema es quien numera; el profesor
+    // solo describe cada paso. Al guardar, cada renglon viaja como un valor mas
+    // del campo "paso" y la vista los une numerados en un solo texto.
+    (function () {
+        const lista = document.getElementById('lista-pasos');
+        const molde = document.getElementById('molde-paso');
+        const agregar = document.getElementById('agregar-paso');
+        if (!lista || !molde || !agregar) {
+            return;
+        }
+
+        function renumerar() {
+            lista.querySelectorAll('.renglon-paso').forEach(function (renglon, indice) {
+                const numero = renglon.querySelector('.numero-paso');
+                if (numero) {
+                    numero.textContent = indice + 1;
+                }
+            });
+        }
+
+        // Ajusta el alto del campo a su contenido: empieza en un renglon y crece
+        // conforme se teclea. Se resta clientHeight de offsetHeight para sumar el
+        // borde, porque con box-sizing border-box el alto lo incluye.
+        function autoAjustar(area) {
+            area.style.height = 'auto';
+            const borde = area.offsetHeight - area.clientHeight;
+            area.style.height = (area.scrollHeight + borde) + 'px';
+        }
+
+        function conectar(renglon) {
+            const area = renglon.querySelector('.entrada-paso');
+            if (area) {
+                area.addEventListener('input', function () {
+                    autoAjustar(area);
+                });
+                autoAjustar(area);
+            }
+            const boton = renglon.querySelector('.boton-quitar-paso');
+            if (boton) {
+                boton.addEventListener('click', function () {
+                    // Siempre queda al menos un renglon para seguir capturando.
+                    if (lista.querySelectorAll('.renglon-paso').length > 1) {
+                        renglon.remove();
+                    } else if (area) {
+                        area.value = '';
+                        autoAjustar(area);
+                    }
+                    renumerar();
+                });
+            }
+        }
+
+        lista.querySelectorAll('.renglon-paso').forEach(conectar);
+
+        agregar.addEventListener('click', function () {
+            const contenido = molde.content.cloneNode(true);
+            const renglon = contenido.querySelector('.renglon-paso');
+            lista.appendChild(renglon);
+            conectar(renglon);
+            renumerar();
+            renglon.querySelector('.entrada-paso').focus();
+        });
+    })();
+</script>
 {% endblock %}

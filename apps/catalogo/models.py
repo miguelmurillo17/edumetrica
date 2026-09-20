@@ -36,8 +36,10 @@ class Materia(models.Model):
     es_cuantitativa = models.BooleanField(default=False)
 
     class Meta:
-        verbose_name = 'materia'
-        verbose_name_plural = 'materias'
+        # En la interfaz una materia se llama "disciplina" (el codigo sigue
+        # diciendo materia). Ver la regla de acentos e identificadores.
+        verbose_name = 'disciplina'
+        verbose_name_plural = 'disciplinas'
         ordering = ['nombre']
 
     def __str__(self):
@@ -51,14 +53,17 @@ class Categoria(models.Model):
         Materia,
         on_delete=models.CASCADE,
         related_name='categorias',
+        verbose_name='disciplina',
     )
     nombre = models.CharField(max_length=100)
     descripcion = models.TextField(blank=True)
     activa = models.BooleanField(default=True)
 
     class Meta:
-        verbose_name = 'categoría'
-        verbose_name_plural = 'categorías'
+        # En la interfaz una categoria se llama "asignatura" (el codigo sigue
+        # diciendo categoria).
+        verbose_name = 'asignatura'
+        verbose_name_plural = 'asignaturas'
         ordering = ['materia', 'nombre']
         # No se puede repetir el mismo nombre de categoria dentro de una materia.
         unique_together = ['materia', 'nombre']
@@ -101,11 +106,13 @@ class SolicitudGeneracion(models.Model):
         Materia,
         on_delete=models.PROTECT,
         related_name='solicitudes',
+        verbose_name='disciplina',
     )
     categoria = models.ForeignKey(
         Categoria,
         on_delete=models.PROTECT,
         related_name='solicitudes',
+        verbose_name='asignatura',
     )
     nivel = models.ForeignKey(
         Nivel,
@@ -191,11 +198,13 @@ class Pregunta(models.Model):
         Materia,
         on_delete=models.PROTECT,
         related_name='preguntas',
+        verbose_name='disciplina',
     )
     categoria = models.ForeignKey(
         Categoria,
         on_delete=models.PROTECT,
         related_name='preguntas',
+        verbose_name='asignatura',
     )
     nivel = models.ForeignKey(
         Nivel,

@@ -19,7 +19,7 @@
         </div>
 
         <div class="campo-filtro">
-            <label>Materia</label>
+            <label>Disciplina</label>
             <select name="materia">
                 <option value="">Todas</option>
                 {% for materia in materias %}
@@ -50,7 +50,7 @@
 
         <div class="campo-filtro acciones-filtro">
             <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
-            <a class="enlace-cancelar" href="{% url 'reportes:dashboard' %}">Limpiar</a>
+            <a class="boton-secundario boton-compacto" href="{% url 'reportes:dashboard' %}">Limpiar</a>
         </div>
     </form>
 
@@ -77,11 +77,11 @@
             <canvas id="grafica-grupos"></canvas>
         </div>
         <div class="grafica">
-            <h3>Promedio por materia</h3>
+            <h3>Promedio por disciplina</h3>
             <canvas id="grafica-materias"></canvas>
         </div>
         <div class="grafica">
-            <h3>Aciertos por categoría (%)</h3>
+            <h3>Aciertos por asignatura (%)</h3>
             <canvas id="grafica-categorias"></canvas>
         </div>
     </div>

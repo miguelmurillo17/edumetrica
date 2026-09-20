@@ -22,7 +22,8 @@ from apps.catalogo.models import (
 from apps.usuarios.models import Persona
 
 from .models import (
-    CategoriaEvaluacion, Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno,
+    AsignacionDocente, CategoriaEvaluacion, Evaluacion, Grupo,
+    IntentoEvaluacion, RespuestaAlumno,
 )
 
 
@@ -52,7 +53,10 @@ class BaseEvaluacionesTest(TestCase):
             nombre='Primero A', institucion=self.institucion
         )
         self.grupo.alumnos.add(self.alumno)
-        self.grupo.profesores.add(self.profesor)
+        # El profesor imparte la asignatura en el grupo.
+        AsignacionDocente.objects.create(
+            grupo=self.grupo, profesor=self.profesor, categoria=self.categoria
+        )
 
     def crear_pregunta(self, **extras):
         datos = {
@@ -187,6 +191,10 @@ class ProgramarEvaluacionTest(BaseEvaluacionesTest):
         self.otra_categoria = Categoria.objects.create(
             materia=self.materia, nombre='Álgebra'
         )
+        # El profesor tambien imparte la segunda asignatura en el grupo.
+        AsignacionDocente.objects.create(
+            grupo=self.grupo, profesor=self.profesor, categoria=self.otra_categoria
+        )
         # Banco suficiente para pedir hasta cinco de cada categoria.
         for _ in range(5):
             self.crear_pregunta()
@@ -294,7 +302,7 @@ class ProgramarEvaluacionTest(BaseEvaluacionesTest):
         respuesta = self.programar([])
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, 'al menos una categoría')
+        self.assertContains(respuesta, 'al menos una asignatura')
         self.assertFalse(Evaluacion.objects.exists())
 
     def test_rechaza_categorias_repetidas(self):
@@ -308,17 +316,36 @@ class ProgramarEvaluacionTest(BaseEvaluacionesTest):
         self.assertFalse(Evaluacion.objects.exists())
         self.assertTrue(respuesta.context['filas'].non_form_errors())
 
-    def test_rechaza_una_categoria_de_otra_materia(self):
+    def test_rechaza_una_asignatura_de_otra_disciplina(self):
         otra_materia = Materia.objects.create(nombre='Literatura')
         ajena = Categoria.objects.create(
             materia=otra_materia, nombre='Comprensión'
         )
         self.crear_pregunta(materia=otra_materia, categoria=ajena)
+        # Se le asigna al profesor para que el formulario acepte la asignatura;
+        # asi la validacion que se prueba es la de disciplina, no la de choices.
+        AsignacionDocente.objects.create(
+            grupo=self.grupo, profesor=self.profesor, categoria=ajena
+        )
 
         respuesta = self.programar([(ajena, 1)])
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, 'no pertenece a la materia elegida')
+        self.assertContains(respuesta, 'no pertenece a la disciplina elegida')
+        self.assertFalse(Evaluacion.objects.exists())
+
+    def test_rechaza_una_asignatura_que_no_imparte_en_el_grupo(self):
+        # El profesor no puede evaluar una asignatura de la disciplina elegida
+        # si no la imparte en ese grupo.
+        no_asignada = Categoria.objects.create(
+            materia=self.materia, nombre='Geometría'
+        )
+        for _ in range(3):
+            self.crear_pregunta(categoria=no_asignada)
+
+        respuesta = self.programar([(no_asignada, 1)])
+
+        self.assertEqual(respuesta.status_code, 200)
         self.assertFalse(Evaluacion.objects.exists())
 
     def test_rechaza_que_termine_antes_de_empezar(self):
@@ -455,3 +482,29 @@ class FinalizarEvaluacionTest(BaseEvaluacionesTest):
 
         self.evaluacion.refresh_from_db()
         self.assertNotEqual(self.evaluacion.estado, Evaluacion.Estado.FINALIZADA)
+
+
+class MisGruposTest(BaseEvaluacionesTest):
+    """La pantalla de grupos muestra que asignatura imparte cada profesor."""
+
+    def test_lista_al_profesor_con_su_asignatura(self):
+        self.client.force_login(self.profesor)
+
+        respuesta = self.client.get(reverse('evaluaciones:lista_grupos'))
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'Ana Ruiz')
+        # La asignatura asignada en el grupo aparece junto al profesor.
+        self.assertContains(respuesta, 'Aritmética')
+
+    def test_una_segunda_asignatura_tambien_aparece(self):
+        otra = Categoria.objects.create(materia=self.materia, nombre='Álgebra')
+        AsignacionDocente.objects.create(
+            grupo=self.grupo, profesor=self.profesor, categoria=otra
+        )
+        self.client.force_login(self.profesor)
+
+        respuesta = self.client.get(reverse('evaluaciones:lista_grupos'))
+
+        self.assertContains(respuesta, 'Aritmética')
+        self.assertContains(respuesta, 'Álgebra')

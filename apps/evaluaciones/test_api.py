@@ -18,7 +18,9 @@ from apps.catalogo.models import (
 )
 from apps.usuarios.models import Persona
 
-from .models import Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno
+from .models import (
+    AsignacionDocente, Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno,
+)
 
 
 PROCEDIMIENTO = 'Primero multiplicas y luego sumas: 3 por 4 son 12, mas 2 son 14.'
@@ -50,7 +52,9 @@ class ResultadoDelAlumnoTest(TestCase):
             nombre='Primero A', institucion=self.institucion
         )
         self.grupo.alumnos.add(self.alumno)
-        self.grupo.profesores.add(self.profesor)
+        AsignacionDocente.objects.create(
+            grupo=self.grupo, profesor=self.profesor, categoria=self.categoria
+        )
 
         # Dos preguntas: el alumno acertara la primera y fallara la segunda.
         self.acertada = self.crear_pregunta('¿Cuánto es 2 + 2?')
