@@ -1,0 +1,11 @@
+{% comment %}
+Boton de ver detalle que se usa en los listados de solo consulta: un ojo con
+el tooltip "Ver detalle". Se incluye pasandole la direccion:
+
+    {% include 'incluye/boton_ver.html' with url=... %}
+{% endcomment %}
+<a class="boton-icono" href="{{ url }}" title="Ver detalle" aria-label="Ver detalle">
+    <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+        <path d="M12 5c-5.05 0-9.29 3.11-11 7.5 1.71 4.39 5.95 7.5 11 7.5s9.29-3.11 11-7.5C21.29 8.11 17.05 5 12 5zm0 12.5a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0-8a3 3 0 1 0 0 6 3 3 0 0 0 0-6z"/>
+    </svg>
+</a>

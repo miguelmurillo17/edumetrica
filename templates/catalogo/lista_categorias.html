@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Asignaturas - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="encabezado-lista">
+        <div class="titulo-con-volver">
+            {% url 'usuarios:panel_administrador' as volver_url %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>Asignaturas</h1>
+        </div>
+        <a class="boton-principal boton-compacto" href="{% url 'catalogo:crear_categoria' %}">Nueva asignatura</a>
+    </div>
+
+    <form method="get" class="filtros">
+        <input type="hidden" name="orden" value="{{ orden }}">
+        <input type="hidden" name="dir" value="{{ direccion }}">
+
+        <div class="campo-filtro">
+            <label for="filtro-materia">Disciplina</label>
+            <select name="materia" id="filtro-materia">
+                <option value="">Todas</option>
+                {% for materia in materias %}
+                <option value="{{ materia.id }}" {% if materia_id == materia.id|stringformat:'s' %}selected{% endif %}>{{ materia.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-estado">Estado</label>
+            <select name="estado" id="filtro-estado">
+                <option value="">Todos</option>
+                <option value="activa" {% if estado == 'activa' %}selected{% endif %}>Activa</option>
+                <option value="inactiva" {% if estado == 'inactiva' %}selected{% endif %}>Inactiva</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro acciones-filtro">
+            <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
+            {% if hay_filtros %}
+            <a class="boton-secundario boton-compacto" href="{% url 'catalogo:lista_categorias' %}">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if categorias %}
+    {% include 'incluye/buscador_tabla.html' with tabla_id='tabla-categorias-admin' mensaje_vacio='Ninguna asignatura coincide con la búsqueda.' %}
+
+    <table class="tabla" id="tabla-categorias-admin">
+        <thead>
+            <tr>
+                <th class="columna-icono"></th>
+                <th>
+                    <a class="orden{% if columnas_orden.materia.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.materia.url }}">
+                        Disciplina
+                        <span class="flecha-orden">{% if columnas_orden.materia.indicador == 'asc' %}&#8593;{% elif columnas_orden.materia.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.nombre.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.nombre.url }}">
+                        Asignatura
+                        <span class="flecha-orden">{% if columnas_orden.nombre.indicador == 'asc' %}&#8593;{% elif columnas_orden.nombre.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.estado.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.estado.url }}">
+                        Estado
+                        <span class="flecha-orden">{% if columnas_orden.estado.indicador == 'asc' %}&#8593;{% elif columnas_orden.estado.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for categoria in categorias %}
+            <tr>
+                <td>
+                    {% url 'catalogo:editar_categoria' categoria.id as url_editar %}
+                    {% include 'incluye/boton_editar.html' with url=url_editar %}
+                </td>
+                <td>{{ categoria.materia.nombre }}</td>
+                <td>{{ categoria.nombre }}</td>
+                <td>
+                    <span class="estado {% if categoria.activa %}estado-activo{% else %}estado-inactivo{% endif %}">
+                        {% if categoria.activa %}Activa{% else %}Inactiva{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% elif hay_filtros %}
+    <p>No hay asignaturas que cumplan los filtros elegidos.</p>
+    {% else %}
+    <p>Todavía no hay asignaturas registradas. Da de alta la primera.</p>
+    {% endif %}
+</section>
+{% endblock %}

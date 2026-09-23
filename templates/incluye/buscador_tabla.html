@@ -1,0 +1,22 @@
+{% comment %}
+Buscador con resaltado que filtra los renglones de un listado, trabajando en
+el navegador sobre lo que el servidor ya trajo. Se incluye pasandole el id
+del contenedor a filtrar y, si no son filas de tabla, el selector de cada
+renglon:
+
+    {% include 'incluye/buscador_tabla.html' with tabla_id='tabla-preguntas' %}
+    {% include 'incluye/buscador_tabla.html' with tabla_id='lista-grupos' renglon='.grupo' mensaje_vacio='Ningún grupo coincide con la búsqueda.' %}
+
+El JavaScript que lo mueve vive en static/js/buscador_tabla.js y se carga
+una sola vez desde base.html.
+{% endcomment %}
+<div class="barra-tabla">
+    <input type="search" class="buscador-tabla" data-tabla="{{ tabla_id }}"
+           {% if renglon %}data-renglon="{{ renglon }}"{% endif %}
+           placeholder="Buscar en la tabla..." autocomplete="off"
+           aria-label="Buscar palabras en la tabla">
+    <span class="conteo-tabla" data-tabla="{{ tabla_id }}"></span>
+</div>
+<p class="ayuda aviso-sin-resultados" data-tabla="{{ tabla_id }}" hidden>
+    {{ mensaje_vacio|default:"Ningún renglón coincide con la búsqueda." }}
+</p>

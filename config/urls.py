@@ -10,6 +10,12 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 
+# El admin de Django trae su propio nombre por omision; se cambia aqui para
+# que diga el nombre del sistema en vez de "Administracion de Django".
+admin.site.site_header = 'Administración Edumétrica'
+admin.site.site_title = 'Administración Edumétrica'
+admin.site.index_title = 'Administración Edumétrica'
+
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('apps.usuarios.urls')),

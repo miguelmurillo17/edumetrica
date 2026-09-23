@@ -64,7 +64,7 @@ python manage.py migrate
 # Crear el usuario administrador
 python manage.py createsuperuser
 
-# Cargar los datos iniciales: los 6 niveles, una institucion y una materia
+# Cargar los datos iniciales: los 3 niveles, una institucion y una materia
 # de ejemplo, y un usuario de cada rol
 python manage.py datos_iniciales
 

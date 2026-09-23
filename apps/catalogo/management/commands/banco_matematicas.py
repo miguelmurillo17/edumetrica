@@ -3,7 +3,7 @@ Carga un banco de preguntas de matematicas capturadas a mano.
 
 Sirve para tener con que trabajar sin depender del proveedor de inteligencia
 artificial: son treinta preguntas de nivel medio superior repartidas en seis
-categorias y seis niveles de dificultad, con su procedimiento para que el
+categorias y tres niveles de dificultad, con su procedimiento para que el
 alumno vea como se resuelve lo que fallo.
 
 Cada pregunta pasa por el mismo verificador simbolico que revisa a las
@@ -71,7 +71,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Aritmética',
-        'nivel': 2,
+        'nivel': 1,
         'enunciado': (
             'Un artículo cuesta $850 y está rebajado 20 %. '
             '¿Cuánto se paga por él?'
@@ -89,7 +89,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Aritmética',
-        'nivel': 2,
+        'nivel': 1,
         'enunciado': '¿Cuál es el resultado de (−5) + (8)(−2)?',
         'expresion': '-5 + 8*(-2)',
         'opciones': ['−21', '−26', '11', '21'],
@@ -103,7 +103,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Aritmética',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': '¿Cuánto vale √144 + √81?',
         'expresion': 'sqrt(144) + sqrt(81)',
         'opciones': ['21', '15', '225', '3'],
@@ -123,7 +123,7 @@ PREGUNTAS = [
     # ------------------------------------------------------------------ #
     {
         'categoria': 'Álgebra',
-        'nivel': 2,
+        'nivel': 1,
         'enunciado': 'Si 3x + 7 = 22, ¿cuánto vale x?',
         'expresion': '(22 - 7)/3',
         'opciones': ['5', '3', '15', '29/3'],
@@ -138,7 +138,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Álgebra',
-        'nivel': 2,
+        'nivel': 1,
         'enunciado': '¿Cuánto vale 2x² − 3x + 1 cuando x = 4?',
         'expresion': '2*4^2 - 3*4 + 1',
         'opciones': ['21', '53', '45', '17'],
@@ -153,7 +153,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Álgebra',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': '¿Cuál es el desarrollo de (x + 3)(x − 3)?',
         'expresion': '(x + 3)*(x - 3)',
         'opciones': ['x² − 9', 'x² + 9', 'x² − 6x + 9', 'x² + 6x − 9'],
@@ -168,7 +168,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Álgebra',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': 'Simplifica la expresión (x² − 4) / (x − 2), con x ≠ 2.',
         'expresion': '(x^2 - 4)/(x - 2)',
         'opciones': ['x + 2', 'x − 2', '2x', 'x² − 2'],
@@ -183,7 +183,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Álgebra',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': 'De las raíces de x² − 5x + 6 = 0, ¿cuál es la mayor?',
         'expresion': '(5 + sqrt(5^2 - 4*6))/2',
         'opciones': ['3', '2', '6', '5'],
@@ -238,7 +238,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': (
             'En un triángulo rectángulo los catetos miden 9 cm y 12 cm. '
             '¿Cuánto mide la hipotenusa?'
@@ -257,7 +257,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': '¿Cuál es el área de un círculo de 5 cm de radio?',
         'expresion': 'pi*5^2',
         'opciones': ['25π cm²', '10π cm²', '5π cm²', '50π cm²'],
@@ -272,7 +272,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': (
             '¿Cuál es el volumen de un cilindro de 3 cm de radio '
             'y 10 cm de altura?'
@@ -293,7 +293,7 @@ PREGUNTAS = [
     # ------------------------------------------------------------------ #
     {
         'categoria': 'Trigonometría',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': '¿Cuánto vale sen 30°?',
         'expresion': 'sin(pi/6)',
         'opciones': ['1/2', '√3/2', '√2/2', '1'],
@@ -309,7 +309,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Trigonometría',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': '¿Cuánto vale tan 45°?',
         'expresion': 'tan(pi/4)',
         'opciones': ['1', '0', '√3', '√3/3'],
@@ -323,7 +323,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Trigonometría',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': '¿Cuánto vale cos 30°?',
         'expresion': 'cos(pi/6)',
         'opciones': ['√3/2', '1/2', '√2/2', '2/√3'],
@@ -338,7 +338,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Trigonometría',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': (
             'En un triángulo rectángulo la hipotenusa mide 13 cm y un cateto '
             'mide 5 cm. ¿Cuánto mide el otro cateto?'
@@ -356,7 +356,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Trigonometría',
-        'nivel': 5,
+        'nivel': 3,
         'enunciado': '¿A qué es igual sen²x + cos²x para cualquier ángulo x?',
         'expresion': 'sin(x)^2 + cos(x)^2',
         'opciones': ['1', '0', '2 sen x cos x', 'cos²x − sen²x'],
@@ -375,7 +375,7 @@ PREGUNTAS = [
     # ------------------------------------------------------------------ #
     {
         'categoria': 'Geometría analítica',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': '¿Cuál es la distancia entre los puntos (1, 2) y (4, 6)?',
         'expresion': 'sqrt((4 - 1)^2 + (6 - 2)^2)',
         'opciones': ['5', '7', '25', '√7'],
@@ -390,7 +390,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría analítica',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': (
             '¿Cuál es la pendiente de la recta que pasa por '
             '(2, 3) y (6, 11)?'
@@ -408,7 +408,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría analítica',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': (
             '¿Cuál es la abscisa, es decir la coordenada x, del punto medio '
             'entre (−2, 4) y (6, 10)?'
@@ -425,7 +425,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría analítica',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': 'En la recta y = 3x − 5, ¿cuánto vale y cuando x = 4?',
         'expresion': '3*4 - 5',
         'opciones': ['7', '17', '12', '−5'],
@@ -440,7 +440,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Geometría analítica',
-        'nivel': 5,
+        'nivel': 3,
         'enunciado': (
             'La circunferencia x² + y² = 49 tiene su centro en el origen. '
             '¿Cuánto mide su radio?'
@@ -463,7 +463,7 @@ PREGUNTAS = [
     # ------------------------------------------------------------------ #
     {
         'categoria': 'Probabilidad y estadística',
-        'nivel': 2,
+        'nivel': 1,
         'enunciado': '¿Cuál es la media aritmética de 4, 8, 10 y 14?',
         'expresion': '(4 + 8 + 10 + 14)/4',
         'opciones': ['9', '36', '10', '8'],
@@ -477,7 +477,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Probabilidad y estadística',
-        'nivel': 2,
+        'nivel': 1,
         'enunciado': (
             'Al lanzar un dado de seis caras, ¿cuál es la probabilidad de '
             'que salga un número par?'
@@ -494,7 +494,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Probabilidad y estadística',
-        'nivel': 3,
+        'nivel': 2,
         'enunciado': (
             'Si lanzas una moneda dos veces, ¿cuál es la probabilidad de '
             'obtener águila las dos veces?'
@@ -513,7 +513,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Probabilidad y estadística',
-        'nivel': 4,
+        'nivel': 2,
         'enunciado': (
             'De una baraja de 52 cartas se saca una al azar. '
             '¿Cuál es la probabilidad de que sea un as?'
@@ -530,7 +530,7 @@ PREGUNTAS = [
     },
     {
         'categoria': 'Probabilidad y estadística',
-        'nivel': 5,
+        'nivel': 3,
         'enunciado': (
             '¿De cuántas maneras distintas se pueden elegir 2 personas '
             'de un grupo de 5, sin importar el orden?'

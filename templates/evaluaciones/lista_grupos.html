@@ -4,12 +4,32 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>Mis grupos</h1>
+    <div class="encabezado-lista">
+        <div class="titulo-con-volver">
+            {% if user.es_administrador %}{% url 'usuarios:panel_administrador' as volver_url %}{% elif user.es_profesor %}{% url 'evaluaciones:panel_profesor' as volver_url %}{% endif %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>{% if user.is_superuser or user.es_administrador %}Grupos{% else %}Mis grupos{% endif %}</h1>
+        </div>
+        {% if user.is_superuser or user.es_administrador %}
+        <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:crear_grupo' %}">Nuevo grupo</a>
+        {% endif %}
+    </div>
 
+    {% if grupos %}
+    {% include 'incluye/buscador_tabla.html' with tabla_id='lista-grupos' renglon='.grupo' mensaje_vacio='Ningún grupo coincide con la búsqueda.' %}
+    {% endif %}
+
+    <div id="lista-grupos">
     {% for grupo in grupos %}
     <div class="grupo">
         <div class="encabezado-lista">
-            <h2>{{ grupo.nombre }}</h2>
+            <h2>
+                {% if user.is_superuser or user.es_administrador %}
+                {% url 'evaluaciones:editar_grupo' grupo.id as url_editar %}
+                {% include 'incluye/boton_editar.html' with url=url_editar %}
+                {% endif %}
+                {{ grupo.nombre }}
+            </h2>
             <span class="estado {% if grupo.activo %}estado-activo{% else %}estado-inactivo{% endif %}">
                 {% if grupo.activo %}Activo{% else %}Inactivo{% endif %}
             </span>
@@ -60,5 +80,6 @@
     {% empty %}
     <p>Todavía no tienes grupos asignados. El administrador es quien los asigna.</p>
     {% endfor %}
+    </div>
 </section>
 {% endblock %}

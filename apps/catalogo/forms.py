@@ -3,7 +3,9 @@
 from django import forms
 from django.forms import inlineformset_factory, BaseInlineFormSet
 
-from .models import Pregunta, OpcionRespuesta, Categoria, Nivel
+from .models import (
+    Pregunta, OpcionRespuesta, Categoria, CategoriaNivel, Materia, Nivel, Institucion,
+)
 
 # Numero de opciones de respuesta que debe tener cada pregunta.
 NUMERO_OPCIONES = 4
@@ -121,3 +123,71 @@ OpcionRespuestaFormSet = inlineformset_factory(
     max_num=NUMERO_OPCIONES,
     can_delete=False,
 )
+
+
+class InstitucionForm(forms.ModelForm):
+    """Datos de la escuela donde se usa el sistema."""
+
+    class Meta:
+        model = Institucion
+        fields = ['nombre', 'direccion', 'telefono']
+
+
+class MateriaForm(forms.ModelForm):
+    """Alta y edicion de una disciplina."""
+
+    class Meta:
+        model = Materia
+        fields = ['nombre', 'descripcion', 'activa', 'es_cuantitativa']
+
+
+class CategoriaForm(forms.ModelForm):
+    """Alta y edicion de una asignatura dentro de una disciplina."""
+
+    class Meta:
+        model = Categoria
+        fields = ['materia', 'nombre', 'activa']
+
+
+class NivelForm(forms.ModelForm):
+    """Alta y edicion de un nivel de dificultad."""
+
+    class Meta:
+        model = Nivel
+        fields = ['numero', 'nombre', 'descripcion']
+
+
+class DescripcionesNivelForm(forms.Form):
+    """Un campo de texto por cada nivel del catalogo, con el tipo de preguntas
+    que le corresponde a la asignatura en ese nivel.
+
+    No es un ModelForm ni un formset inline: esos necesitan que la asignatura
+    ya tenga id para poder asociarle filas, y por eso el alta se quedaba sin
+    este campo. Los niveles ya existen de antemano (los da de alta el
+    administrador aparte), asi que aqui basta un campo de texto por nivel,
+    sirve igual para dar de alta una asignatura que para editarla.
+    """
+
+    def __init__(self, *args, categoria=None, **kwargs):
+        self.categoria = categoria
+        super().__init__(*args, **kwargs)
+        for nivel in Nivel.objects.all():
+            inicial = ''
+            if categoria is not None:
+                fila = categoria.descripciones_nivel.filter(nivel=nivel).first()
+                inicial = fila.descripcion if fila else ''
+            self.fields[f'nivel_{nivel.id}'] = forms.CharField(
+                required=False,
+                initial=inicial,
+                label=f'Tipo de preguntas — nivel {nivel.nombre}',
+                widget=forms.Textarea(attrs={'rows': 2}),
+            )
+
+    def guardar(self, categoria):
+        """Crea o actualiza la fila de cada nivel con lo que se capturo."""
+        for nivel in Nivel.objects.all():
+            CategoriaNivel.objects.update_or_create(
+                categoria=categoria,
+                nivel=nivel,
+                defaults={'descripcion': self.cleaned_data.get(f'nivel_{nivel.id}', '')},
+            )

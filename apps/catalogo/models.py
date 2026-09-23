@@ -6,6 +6,8 @@ los niveles de dificultad y las preguntas con sus opciones de respuesta.
 from django.db import models
 from django.conf import settings
 
+from config.orden_alfabetico import alfabetico
+
 
 class Institucion(models.Model):
     """Datos de la escuela donde se usa el sistema."""
@@ -17,6 +19,7 @@ class Institucion(models.Model):
     class Meta:
         verbose_name = 'institución'
         verbose_name_plural = 'instituciones'
+        ordering = alfabetico('nombre')
 
     def __str__(self):
         return self.nombre
@@ -40,7 +43,7 @@ class Materia(models.Model):
         # diciendo materia). Ver la regla de acentos e identificadores.
         verbose_name = 'disciplina'
         verbose_name_plural = 'disciplinas'
-        ordering = ['nombre']
+        ordering = alfabetico('nombre')
 
     def __str__(self):
         return self.nombre
@@ -56,7 +59,6 @@ class Categoria(models.Model):
         verbose_name='disciplina',
     )
     nombre = models.CharField(max_length=100)
-    descripcion = models.TextField(blank=True)
     activa = models.BooleanField(default=True)
 
     class Meta:
@@ -64,7 +66,10 @@ class Categoria(models.Model):
         # diciendo categoria).
         verbose_name = 'asignatura'
         verbose_name_plural = 'asignaturas'
-        ordering = ['materia', 'nombre']
+        # Ordena por el nombre de la materia, no por su id, para que coincida
+        # con el orden alfabetico del texto que se ve en el select
+        # ("Materia - Categoria").
+        ordering = alfabetico('materia__nombre', 'nombre')
         # No se puede repetir el mismo nombre de categoria dentro de una materia.
         unique_together = ['materia', 'nombre']
 
@@ -73,7 +78,7 @@ class Categoria(models.Model):
 
 
 class Nivel(models.Model):
-    """Nivel de dificultad de las preguntas. El sistema maneja seis niveles."""
+    """Nivel de dificultad de las preguntas. El sistema maneja tres niveles."""
 
     numero = models.PositiveSmallIntegerField(unique=True)
     nombre = models.CharField(max_length=50)
@@ -86,6 +91,39 @@ class Nivel(models.Model):
 
     def __str__(self):
         return f'Nivel {self.numero} - {self.nombre}'
+
+
+class CategoriaNivel(models.Model):
+    """Que tipo de preguntas corresponde a un nivel dentro de una asignatura.
+
+    Una misma dificultad significa cosas distintas segun la asignatura (un
+    nivel 2 de aritmetica no es lo mismo que un nivel 2 de trigonometria), asi
+    que la descripcion vive por pareja categoria-nivel y no en el nivel solo.
+    Se le manda a la inteligencia artificial junto con el numero de nivel al
+    generar una pregunta nueva.
+    """
+
+    categoria = models.ForeignKey(
+        Categoria,
+        on_delete=models.CASCADE,
+        related_name='descripciones_nivel',
+        verbose_name='asignatura',
+    )
+    nivel = models.ForeignKey(
+        Nivel,
+        on_delete=models.CASCADE,
+        related_name='descripciones_categoria',
+    )
+    descripcion = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = 'tipo de preguntas por nivel'
+        verbose_name_plural = 'tipos de preguntas por nivel'
+        unique_together = ['categoria', 'nivel']
+        ordering = ['categoria', 'nivel__numero']
+
+    def __str__(self):
+        return f'{self.categoria} - {self.nivel}'
 
 
 class SolicitudGeneracion(models.Model):

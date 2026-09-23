@@ -1,0 +1,57 @@
+{% load reportes_extras %}
+{% comment %}
+Dialogo "Ver filtros aplicados", compartido por el tablero y el listado de
+intentos: los dos arman resumen_filtros y alumnos_coincidentes de la misma
+forma (ver apps.reportes.views._resumen_filtros), asi que la plantilla no se
+repite. Se incluye tal cual, sin parametros:
+
+    {% include 'reportes/dialogo_filtros.html' %}
+
+y necesita un boton en la pagina con id="boton-ver-filtros" que lo abra.
+{% endcomment %}
+<dialog id="dialogo-filtros" class="dialogo">
+    <h2>Filtros aplicados</h2>
+    {% if resumen_filtros %}
+    <ul class="lista-filtros">
+        {% for etiqueta, valor in resumen_filtros %}
+        <li><strong>{{ etiqueta }}:</strong> {{ valor }}</li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No hay filtros aplicados; se muestran todos los resultados.</p>
+    {% endif %}
+
+    {% if alumnos_coincidentes %}
+    <h3>Alumnos que coinciden con "{{ filtros.alumno }}"</h3>
+    <ul class="lista-filtros">
+        {% for alumno in alumnos_coincidentes %}
+        <li>{{ alumno.nombre_completo|resaltar:filtros.alumno }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <div class="acciones">
+        <button type="button" class="boton-secundario boton-compacto" data-cerrar-dialogo-filtros>Cerrar</button>
+    </div>
+</dialog>
+
+<script>
+    (function () {
+        const boton = document.getElementById('boton-ver-filtros');
+        const dialogo = document.getElementById('dialogo-filtros');
+        if (!boton || !dialogo) {
+            return;
+        }
+        boton.addEventListener('click', function () {
+            dialogo.showModal();
+        });
+        dialogo.querySelector('[data-cerrar-dialogo-filtros]').addEventListener('click', function () {
+            dialogo.close();
+        });
+        dialogo.addEventListener('click', function (evento) {
+            if (evento.target === dialogo) {
+                dialogo.close();
+            }
+        });
+    })();
+</script>

@@ -156,10 +156,12 @@ a.marca {
 /* Lo que no debe partirse en columnas ocupa el renglon completo. */
 .formulario > .aviso-error,
 .formulario > h2,
+.formulario > h3,
 .formulario > p,
 .formulario > .opcion,
 .formulario > .acciones,
 .formulario > .fila-doble,
+.formulario > .campo-casilla,
 .formulario > .campo:has(textarea),
 .formulario > .campo:has(table),
 .formulario > .campo:has(.lista-casillas) {
@@ -168,6 +170,26 @@ a.marca {
 
 .formulario .campo {
     margin-bottom: 1.1rem;
+}
+
+/* Una casilla (activa, is_active, etc.) va junto a su etiqueta, no debajo:
+   el input no se estira al 100% del campo -asi no queda centrado y lejos del
+   texto- y la etiqueta pierde el margen que la separaba de un campo normal.
+   Es una clase aparte y no ":has(input[checkbox])" porque esa regla tambien
+   agarraba la casilla de borrar -oculta- de las tablas con formset, y le
+   descuadraba el layout al campo entero (ver "Asignaturas y docentes"). */
+.formulario .campo-casilla {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.formulario .campo-casilla label {
+    margin-bottom: 0;
+}
+
+.formulario input[type="checkbox"] {
+    width: auto;
 }
 
 .formulario label {
@@ -190,6 +212,19 @@ a.marca {
     border-color: var(--color-principal-claro);
 }
 
+.formulario .errorlist {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    color: var(--color-error);
+    font-size: 0.85rem;
+}
+
+.formulario .campo:has(.errorlist) input,
+.formulario .campo:has(.errorlist) select {
+    border-color: var(--color-error);
+}
+
 .boton-principal {
     width: 100%;
     background-color: var(--color-principal);
@@ -209,6 +244,24 @@ a.marca {
 /* Paneles */
 .panel h1 {
     color: var(--color-principal);
+}
+
+/* Titulo con la flecha de volver a la pantalla anterior, cuando la trae. */
+.titulo-con-volver {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.titulo-con-volver h1 {
+    margin: 0;
+}
+
+/* Dato secundario junto al titulo (por ejemplo el grupo junto al nombre del
+   alumno): mismo color del titulo, con letra un poco mas chica. */
+.subtitulo-h1 {
+    font-size: 0.65em;
 }
 
 .tarjetas {
@@ -315,20 +368,12 @@ a.tarjeta:hover {
     margin-top: 0;
 }
 
-.enlace-cancelar {
-    color: #6c7a74;
-    text-decoration: none;
-}
-
-.enlace-cancelar:hover {
-    text-decoration: underline;
-}
-
 /* Encabezado de las listas con boton a la derecha */
 .encabezado-lista {
     display: flex;
     justify-content: space-between;
     align-items: center;
+    margin-bottom: 1.5rem;
 }
 
 .boton-compacto {
@@ -386,6 +431,10 @@ a.tarjeta:hover {
     text-align: left;
     padding: 0.7rem 1rem;
     border-bottom: 1px solid var(--color-borde);
+}
+
+.tabla .columna-centrada {
+    text-align: center;
 }
 
 .tabla th {
@@ -488,6 +537,14 @@ a.tarjeta:hover {
 .boton-secundario:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+/* Boton con un icono antes del texto, para las acciones que cambian de
+   vista (por ejemplo pasar del tablero al listado de intentos). */
+.boton-con-icono {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
 }
 
 /* Aplicacion del alumno (quiz) */
@@ -706,6 +763,12 @@ li.error .marca-resultado {
     margin: 0.3rem 0 0;
 }
 
+.numero-de {
+    font-size: 1.1rem;
+    font-weight: normal;
+    color: #6c7a74;
+}
+
 /* Rejilla de graficas */
 .graficas {
     display: grid;
@@ -719,6 +782,10 @@ li.error .marca-resultado {
     padding: 1.2rem;
     border-radius: var(--radio);
     box-shadow: 0 3px 12px rgba(0, 0, 0, 0.06);
+}
+
+.grafica-ancha {
+    grid-column: span 2;
 }
 
 .grafica h3 {
@@ -802,17 +869,28 @@ li.error .marca-resultado {
 }
 
 .boton-secundario {
+    display: inline-block;
     background: none;
     border: 1px solid var(--color-principal);
     color: var(--color-principal);
-    padding: 0.45rem 0.9rem;
+    /* Resta el grosor del borde para igualar el alto del boton principal,
+       que no lleva borde. */
+    padding: calc(0.75rem - 1px) 0.9rem;
     border-radius: var(--radio);
+    text-decoration: none;
     cursor: pointer;
     margin-top: 0.6rem;
 }
 
 .boton-secundario:hover {
     background-color: rgba(47, 111, 79, 0.12);
+}
+
+/* Version compacta del boton secundario (por ejemplo "Generar con IA" junto a
+   "Nueva pregunta"): resta el borde al padding compacto para igualar el alto
+   del boton principal compacto, que no lleva borde. */
+.boton-secundario.boton-compacto {
+    padding: calc(0.55rem - 1px) 1.1rem;
 }
 
 /* Enlace al pie de las pantallas de acceso y de restablecer contrasena */
@@ -1025,6 +1103,86 @@ mark.resaltado {
     color: var(--color-texto);
 }
 
+/* Texto que solo necesita quien usa un lector de pantalla: se ve y se lee,
+   pero no ocupa espacio en la pantalla para quien si ve el icono. */
+.visualmente-oculto {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* Columna "Respuesta correcta" del detalle de un intento: el texto y, si la
+   pregunta trae procedimiento, el boton que abre el dialogo junto a el. */
+.celda-con-boton {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+/* Resultado de una pregunta en el detalle de un intento: palomita o cruz,
+   en vez del punto de color que usan los demas estados del sistema, porque
+   aqui es mas claro un icono con una forma distinta para cada caso. */
+.resultado-icono {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-weight: 600;
+}
+
+.resultado-correcta {
+    color: var(--punto-favorable);
+}
+
+.resultado-incorrecta {
+    color: var(--color-error);
+}
+
+/* Dialogo generico: el procedimiento completo de una pregunta, los filtros
+   aplicados, etc. */
+.dialogo {
+    border: none;
+    border-radius: var(--radio);
+    padding: 1.5rem;
+    width: 90%;
+    max-width: 32rem;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+}
+
+.dialogo::backdrop {
+    background: rgba(0, 0, 0, 0.4);
+}
+
+.dialogo h2 {
+    margin-top: 0;
+    color: var(--color-principal);
+    font-size: 1.1rem;
+}
+
+.dialogo h3 {
+    color: var(--color-principal);
+    font-size: 0.95rem;
+}
+
+.dialogo p {
+    line-height: 1.5;
+    white-space: pre-line;
+}
+
+.lista-filtros {
+    margin: 0.3rem 0 1rem;
+    padding-left: 1.2rem;
+}
+
+.lista-filtros li {
+    margin-bottom: 0.3rem;
+}
+
 /* Telefono y tablet en vertical
    ----------------------------
    El formulario deja de repartirse en columnas y se apila; las tablas, que en
@@ -1054,5 +1212,11 @@ mark.resaltado {
     .encabezado-lista {
         flex-wrap: wrap;
         gap: 0.6rem;
+    }
+
+    /* La marca y el menu se apilan en vez de desbordar la barra. */
+    .barra-superior {
+        flex-wrap: wrap;
+        row-gap: 0.5rem;
     }
 }

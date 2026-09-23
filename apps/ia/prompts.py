@@ -41,6 +41,12 @@ Reglas del contenido:
   página web: escríbelos en texto plano legible, NUNCA en LaTeX ni con barras
   invertidas. Escribe "log base 2 de x", no "\\log_2(x)"; escribe "x elevado al
   cuadrado" o "x^2", no "x^{2}"; escribe "raíz de 5", no "\\sqrt{5}".
+- No generas imágenes ni figuras: el enunciado nunca puede depender de una
+  imagen. Prohibido decir "de acuerdo con la imagen", "según la figura", "en
+  el dibujo" o cualquier variante. Si el tema normalmente usaría una figura
+  (un triángulo, una gráfica, un cuerpo geométrico), describe todos los datos
+  con palabras y números en el propio enunciado, de modo que se entienda y se
+  resuelva sin ver nada más.
 
 Reglas del formato matemático, importantes porque un verificador automático lee
 "expresion" y "valores":
@@ -69,7 +75,7 @@ PLANTILLA_USUARIO = """Genera {cantidad} {sustantivo} de opción múltiple en es
 
 Materia: {materia}
 Categoría: {categoria}
-Nivel de dificultad: {nivel} de 6, donde 1 es lo más sencillo y 6 lo más difícil{descripcion_nivel}
+Nivel de dificultad: {nivel} de 3, donde 1 es lo más sencillo y 3 lo más difícil{descripcion_nivel}
 
 Responde únicamente con el JSON del esquema indicado."""
 

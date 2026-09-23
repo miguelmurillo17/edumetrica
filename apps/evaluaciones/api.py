@@ -19,6 +19,7 @@ from rest_framework.response import Response
 from apps.catalogo.models import Pregunta, OpcionRespuesta
 
 from .models import Evaluacion, IntentoEvaluacion, RespuestaAlumno
+from .servicios import construir_resultado
 
 
 def _url_imagen(campo):
@@ -44,40 +45,6 @@ def _serializar_preguntas(evaluacion):
             ],
         })
     return preguntas
-
-
-def _construir_resultado(intento):
-    """Arma el resultado final con el detalle de aciertos y errores."""
-    evaluacion = intento.evaluacion
-    respuestas = {
-        respuesta.pregunta_id: respuesta
-        for respuesta in intento.respuestas.select_related('opcion_seleccionada')
-    }
-
-    detalle = []
-    for pregunta in evaluacion.preguntas.all().prefetch_related('opciones'):
-        respuesta = respuestas.get(pregunta.id)
-        correcta = pregunta.opciones.filter(es_correcta=True).first()
-        acerto = respuesta.es_correcta if respuesta else False
-        detalle.append({
-            'enunciado': pregunta.enunciado,
-            'tu_respuesta': respuesta.opcion_seleccionada.texto if respuesta and respuesta.opcion_seleccionada else None,
-            'respuesta_correcta': correcta.texto if correcta else None,
-            'acerto': acerto,
-            # El procedimiento solo viaja en las preguntas que el alumno fallo,
-            # que son en las que ensena algo. Una pregunta sin responder cuenta
-            # como fallada, y ahi tambien sirve. Se manda cadena vacia y no la
-            # llave ausente para que la plantilla no tenga que distinguir entre
-            # "no aplica" y "esta pregunta no trae procedimiento".
-            'procedimiento': '' if acerto else pregunta.procedimiento,
-        })
-
-    return {
-        'calificacion': float(intento.calificacion or 0),
-        'total': evaluacion.numero_preguntas,
-        'aciertos': intento.respuestas.filter(es_correcta=True).count(),
-        'detalle': detalle,
-    }
 
 
 @api_view(['POST'])
@@ -154,7 +121,7 @@ def finalizar_intento(request, intento_id):
         intento.calificacion = intento.calcular_calificacion()
         intento.save()
 
-    return Response(_construir_resultado(intento))
+    return Response(construir_resultado(intento))
 
 
 @api_view(['GET'])
@@ -174,7 +141,7 @@ def resultado_intento(request, intento_id):
             {'detalle': 'Todavía no has terminado esta evaluación.'}, status=400
         )
 
-    return Response(_construir_resultado(intento))
+    return Response(construir_resultado(intento))
 
 
 @api_view(['GET'])

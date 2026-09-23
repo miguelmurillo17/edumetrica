@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Panel del administrador - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% if user.is_superuser %}{% url 'usuarios:inicio' as volver_url %}{% endif %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Panel del administrador</h1>
+    </div>
+    <p>Bienvenido, {{ user.nombre }}. Desde aquí puedes dar de alta y editar
+       todo lo que necesita el sistema.</p>
+
+    <div class="tarjetas">
+        <a class="tarjeta" href="{% url 'usuarios:lista_personas' %}">
+            <h2>Personas</h2>
+            <p>Alta de administradores, profesores y alumnos.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'catalogo:lista_instituciones' %}">
+            <h2>Instituciones</h2>
+            <p>Datos de la escuela donde se usa el sistema.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'catalogo:lista_materias' %}">
+            <h2>Disciplinas</h2>
+            <p>Materias que se evalúan, por ejemplo Matemáticas.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'catalogo:lista_categorias' %}">
+            <h2>Asignaturas</h2>
+            <p>Temas dentro de cada disciplina, por ejemplo Aritmética.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'catalogo:lista_niveles' %}">
+            <h2>Niveles</h2>
+            <p>Los tres niveles de dificultad de las preguntas.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'evaluaciones:lista_grupos' %}">
+            <h2>Grupos</h2>
+            <p>Alumnos, profesores y la asignatura que imparte cada uno.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'catalogo:lista_preguntas' %}">
+            <h2>Preguntas</h2>
+            <p>Banco de preguntas de todas las disciplinas.</p>
+        </a>
+        <a class="tarjeta" href="{% url 'reportes:dashboard' %}">
+            <h2>Tablero</h2>
+            <p>Resultados de todas las evaluaciones, con filtros y gráficas.</p>
+        </a>
+        <a class="tarjeta" href="/admin/">
+            <h2>Administración del Sistema</h2>
+            <p>Panel de Django para lo que no cubren estas pantallas.</p>
+        </a>
+    </div>
+</section>
+{% endblock %}

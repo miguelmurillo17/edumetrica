@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{% if persona %}Editar persona{% else %}Nueva persona{% endif %} - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% url 'usuarios:lista_personas' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if persona %}Editar persona{% else %}Nueva persona{% endif %}</h1>
+    </div>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.correo.id_for_label }}">{{ formulario.correo.label }}</label>
+            {{ formulario.correo }}
+            {{ formulario.correo.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nombre.id_for_label }}">{{ formulario.nombre.label }}</label>
+            {{ formulario.nombre }}
+            {{ formulario.nombre.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.apellido.id_for_label }}">{{ formulario.apellido.label }}</label>
+            {{ formulario.apellido }}
+            {{ formulario.apellido.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.rol.id_for_label }}">{{ formulario.rol.label }}</label>
+            {{ formulario.rol }}
+            {{ formulario.rol.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.sexo.id_for_label }}">{{ formulario.sexo.label }}</label>
+            {{ formulario.sexo }}
+            {{ formulario.sexo.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.fecha_nacimiento.id_for_label }}">{{ formulario.fecha_nacimiento.label }}</label>
+            {{ formulario.fecha_nacimiento }}
+            {{ formulario.fecha_nacimiento.errors }}
+        </div>
+
+        {% if persona %}
+        <div class="campo campo-casilla">
+            <label for="{{ formulario.is_active.id_for_label }}">{{ formulario.is_active.label }}</label>
+            {{ formulario.is_active }}
+            {{ formulario.is_active.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nueva_contrasena1.id_for_label }}">{{ formulario.nueva_contrasena1.label }}</label>
+            {{ formulario.nueva_contrasena1 }}
+            <p class="ayuda">{{ formulario.nueva_contrasena1.help_text }}</p>
+            {{ formulario.nueva_contrasena1.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nueva_contrasena2.id_for_label }}">{{ formulario.nueva_contrasena2.label }}</label>
+            {{ formulario.nueva_contrasena2 }}
+            {{ formulario.nueva_contrasena2.errors }}
+        </div>
+        {% else %}
+        <div class="campo">
+            <label for="{{ formulario.password1.id_for_label }}">Contraseña</label>
+            {{ formulario.password1 }}
+            {{ formulario.password1.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.password2.id_for_label }}">Confirma la contraseña</label>
+            {{ formulario.password2 }}
+            {{ formulario.password2.errors }}
+        </div>
+        {% endif %}
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar persona</button>
+            <a class="boton-secundario" href="{% url 'usuarios:lista_personas' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

@@ -1,0 +1,294 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{% if grupo %}Editar grupo{% else %}Nuevo grupo{% endif %} - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% url 'evaluaciones:lista_grupos' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if grupo %}Editar grupo{% else %}Nuevo grupo{% endif %}</h1>
+    </div>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.nombre.id_for_label }}">{{ formulario.nombre.label }}</label>
+            {{ formulario.nombre }}
+            {{ formulario.nombre.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.institucion.id_for_label }}">{{ formulario.institucion.label }}</label>
+            {{ formulario.institucion }}
+            {{ formulario.institucion.errors }}
+        </div>
+
+        <div class="campo campo-casilla">
+            <label for="{{ formulario.activo.id_for_label }}">{{ formulario.activo.label }}</label>
+            {{ formulario.activo }}
+            {{ formulario.activo.errors }}
+        </div>
+        
+        <div class="campo">
+            <h3>Alumnos del grupo</h3>
+            <p class="ayuda">{{ formulario.alumnos.help_text }}</p>
+            {{ formulario.alumnos.errors }}
+
+            <table class="tabla tabla-categorias">
+                <thead>
+                    <tr>
+                        <th>Alumno</th>
+                        <th class="columna-icono"></th>
+                    </tr>
+                </thead>
+                <tbody id="renglones-alumnos">
+                    {% for alumno in formulario.alumnos_actuales %}
+                    <tr class="renglon-alumno">
+                        <td>
+                            <select name="alumnos">
+                                <option value="">---------</option>
+                                {% for opcion in formulario.fields.alumnos.queryset %}
+                                <option value="{{ opcion.pk }}" {% if opcion.pk == alumno.pk %}selected{% endif %}>{{ opcion }}</option>
+                                {% endfor %}
+                            </select>
+                        </td>
+                        <td>
+                            <button type="button" class="boton-icono boton-quitar"
+                                    title="Quitar" aria-label="Quitar">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                                    <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="button" class="boton-secundario" id="agregar-alumno">
+                Agregar alumno
+            </button>
+
+            {# Molde que copia el navegador cada vez que se agrega un renglon. #}
+            <template id="molde-alumno">
+                <tr class="renglon-alumno">
+                    <td>
+                        <select name="alumnos">
+                            <option value="">---------</option>
+                            {% for opcion in formulario.fields.alumnos.queryset %}
+                            <option value="{{ opcion.pk }}">{{ opcion }}</option>
+                            {% endfor %}
+                        </select>
+                    </td>
+                    <td>
+                        <button type="button" class="boton-icono boton-quitar"
+                                title="Quitar" aria-label="Quitar">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                                <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            </template>
+
+        </div>
+        <div class="campo">
+            <h3>Asignaturas y docentes</h3>
+            <!-- <p class="ayuda">Agrega un renglón por cada profesor y la asignatura
+               que imparte en este grupo.</p> -->
+
+            {% if asignaciones.non_form_errors %}
+            <div class="aviso-error">{{ asignaciones.non_form_errors }}</div>
+            {% endif %}
+
+            {{ asignaciones.management_form }}
+
+            <table class="tabla tabla-categorias">
+                <thead>
+                    <tr>
+                        <th>Profesor</th>
+                        <th>Asignatura</th>
+                        <th class="columna-icono"></th>
+                    </tr>
+                </thead>
+                <tbody id="renglones-asignaciones">
+                    {% for fila in asignaciones %}
+                    <tr class="renglon-asignacion">
+                        {{ fila.id }}
+                        <td>
+                            {{ fila.profesor }}
+                            {{ fila.profesor.errors }}
+                        </td>
+                        <td>
+                            {{ fila.categoria }}
+                            {{ fila.categoria.errors }}
+                        </td>
+                        <td>
+                            <span class="casilla-borrar">{{ fila.DELETE }}</span>
+                            <button type="button" class="boton-icono boton-quitar"
+                                    title="Quitar" aria-label="Quitar">
+                                <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                                    <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                                </svg>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <button type="button" class="boton-secundario" id="agregar-asignacion">
+                Agregar profesor
+            </button>
+
+            {# Molde que copia el navegador cada vez que se agrega un renglon. #}
+            <template id="molde-asignacion">
+                <tr class="renglon-asignacion">
+                    <td>{{ asignaciones.empty_form.profesor }}</td>
+                    <td>{{ asignaciones.empty_form.categoria }}</td>
+                    <td>
+                        <span class="casilla-borrar">{{ asignaciones.empty_form.DELETE }}</span>
+                        <button type="button" class="boton-icono boton-quitar"
+                                title="Quitar" aria-label="Quitar">
+                            <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                                <path d="M6 19a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/>
+                            </svg>
+                        </button>
+                    </td>
+                </tr>
+            </template>
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar grupo</button>
+            <a class="boton-secundario" href="{% url 'evaluaciones:lista_grupos' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Maneja la tabla de la plantilla docente: agregar renglones nuevos y
+    // quitar los capturados. Mismo patron que crear_evaluacion.html, con el
+    // prefijo "asignaciones" que le da el related_name de AsignacionDocente.
+    (function () {
+        const cuerpo = document.getElementById('renglones-asignaciones');
+        const molde = document.getElementById('molde-asignacion');
+        const total = document.getElementById('id_asignaciones-TOTAL_FORMS');
+
+        function conectarQuitar(renglon) {
+            const boton = renglon.querySelector('.boton-quitar');
+            if (!boton) {
+                return;
+            }
+            boton.addEventListener('click', function () {
+                const casilla = renglon.querySelector('input[type=checkbox][name$="-DELETE"]');
+                if (casilla) {
+                    // Al renglon que ya estaba guardado se le marca el borrado
+                    // y se esconde, para no descuadrar la numeracion de Django.
+                    casilla.checked = true;
+                }
+                renglon.hidden = true;
+            });
+        }
+
+        document.querySelectorAll('.renglon-asignacion').forEach(conectarQuitar);
+
+        document.getElementById('agregar-asignacion').addEventListener('click', function () {
+            const indice = parseInt(total.value, 10);
+            const html = molde.innerHTML.replace(/__prefix__/g, indice);
+            const contenedor = document.createElement('tbody');
+            contenedor.innerHTML = html.trim();
+            const renglon = contenedor.firstElementChild;
+            cuerpo.appendChild(renglon);
+            conectarQuitar(renglon);
+            total.value = indice + 1;
+        });
+    })();
+
+    // Tabla de alumnos: a diferencia de la de arriba no es un formset -es
+    // un solo campo de muchos valores-, asi que agregar y quitar renglones
+    // no necesita management form ni casilla de borrado: cada <select>
+    // manda su valor con el mismo "name", y el que no esta en el DOM al
+    // enviar el formulario simplemente no cuenta.
+    //
+    // Ademas, un alumno que ya se eligio en un renglon desaparece de las
+    // opciones de los demas: el servidor ya rechaza el duplicado al guardar,
+    // pero repetirlo por accidente en la misma pantalla no debe ni ofrecerse.
+    (function () {
+        const cuerpo = document.getElementById('renglones-alumnos');
+        const molde = document.getElementById('molde-alumno');
+
+        // Lista completa de alumnos disponibles, tal cual la trae el molde
+        // (sin ningun renglon ya escogido). De ahi se arma cada select.
+        const opcionesMaestras = Array.from(
+            molde.content.querySelectorAll('select[name="alumnos"] option')
+        ).map(function (opcion) {
+            return {valor: opcion.value, texto: opcion.textContent};
+        });
+
+        function actualizarOpciones() {
+            const selects = Array.from(
+                cuerpo.querySelectorAll('select[name="alumnos"]')
+            );
+            const elegidos = new Set(
+                selects.map(function (select) { return select.value; }).filter(Boolean)
+            );
+
+            selects.forEach(function (select) {
+                const actual = select.value;
+                select.innerHTML = '';
+                opcionesMaestras.forEach(function (opcion) {
+                    // Se omite si otro renglon ya lo eligio; el propio valor
+                    // del select se respeta para no perderse a si mismo.
+                    if (opcion.valor && opcion.valor !== actual && elegidos.has(opcion.valor)) {
+                        return;
+                    }
+                    const elementoOpcion = document.createElement('option');
+                    elementoOpcion.value = opcion.valor;
+                    elementoOpcion.textContent = opcion.texto;
+                    elementoOpcion.selected = opcion.valor === actual;
+                    select.appendChild(elementoOpcion);
+                });
+            });
+        }
+
+        function conectarQuitar(renglon) {
+            const boton = renglon.querySelector('.boton-quitar');
+            if (!boton) {
+                return;
+            }
+            boton.addEventListener('click', function () {
+                renglon.remove();
+                actualizarOpciones();
+            });
+        }
+
+        document.querySelectorAll('.renglon-alumno').forEach(conectarQuitar);
+
+        cuerpo.addEventListener('change', function (evento) {
+            if (evento.target.matches('select[name="alumnos"]')) {
+                actualizarOpciones();
+            }
+        });
+
+        document.getElementById('agregar-alumno').addEventListener('click', function () {
+            const contenedor = document.createElement('tbody');
+            contenedor.innerHTML = molde.innerHTML.trim();
+            const renglon = contenedor.firstElementChild;
+            cuerpo.appendChild(renglon);
+            conectarQuitar(renglon);
+            actualizarOpciones();
+        });
+
+        actualizarOpciones();
+    })();
+</script>
+{% endblock %}

@@ -4,9 +4,13 @@
 
 {% block contenido %}
 <section class="panel">
+    {% url 'catalogo:lista_preguntas' as volver_url %}
 
     {% if situacion.estado == 'en_proceso' %}
-    <h1>Generando la pregunta</h1>
+    <div class="titulo-con-volver">
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Generando la pregunta</h1>
+    </div>
     <p>
         Se le está pidiendo a la inteligencia artificial una pregunta de
         <strong>{{ solicitud.categoria.nombre }}</strong>
@@ -21,7 +25,10 @@
     <p class="espera-tiempo">Llevas <span id="segundos">0</span> segundos esperando.</p>
 
     {% else %}
-    <h1>No se pudo generar la pregunta</h1>
+    <div class="titulo-con-volver">
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>No se pudo generar la pregunta</h1>
+    </div>
 
     <div class="aviso-error">{{ situacion.mensaje }}</div>
 
@@ -41,7 +48,7 @@
         {% if situacion.reintentable %}
         <a class="boton-principal boton-compacto" href="{% url 'catalogo:generar_pregunta' %}">Intentar de nuevo</a>
         {% endif %}
-        <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Volver a las preguntas</a>
+        <a class="boton-secundario" href="{% url 'catalogo:lista_preguntas' %}">Volver a las preguntas</a>
     </div>
     {% endif %}
 

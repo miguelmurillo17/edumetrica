@@ -4,7 +4,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>{{ evaluacion.titulo }}</h1>
+    <div class="titulo-con-volver">
+        {% url 'evaluaciones:lista_evaluaciones' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{{ evaluacion.titulo }}</h1>
+    </div>
     <p class="datos-evaluacion">
         {{ evaluacion.grupo.nombre }} ·
         {{ evaluacion.materia.nombre }} ·
@@ -33,6 +37,7 @@
     <table class="tabla">
         <thead>
             <tr>
+                <th class="columna-icono"></th>
                 <th>Alumno</th>
                 <th>Situación</th>
                 <th>Calificación</th>
@@ -41,6 +46,12 @@
         <tbody>
             {% for fila in filas %}
             <tr>
+                <td>
+                    {% if fila.situacion == 'finalizado' %}
+                    {% url 'reportes:detalle_intento' fila.intento.id as url_detalle %}
+                    {% include 'incluye/boton_ver.html' with url=url_detalle %}
+                    {% endif %}
+                </td>
                 <td>{{ fila.alumno.nombre_completo }}</td>
                 <td>
                     {% if fila.situacion == 'finalizado' %}<span class="estado estado-finalizada">Finalizado</span>
@@ -54,11 +65,11 @@
                 </td>
             </tr>
             {% empty %}
-            <tr><td colspan="3">El grupo no tiene alumnos asignados.</td></tr>
+            <tr><td colspan="4">El grupo no tiene alumnos asignados.</td></tr>
             {% endfor %}
         </tbody>
     </table>
 
-    <p><a class="enlace-cancelar" href="{% url 'evaluaciones:lista_evaluaciones' %}">Volver a mis evaluaciones</a></p>
+    <p><a class="boton-secundario" href="{% url 'evaluaciones:lista_evaluaciones' %}">Volver a mis evaluaciones</a></p>
 </section>
 {% endblock %}

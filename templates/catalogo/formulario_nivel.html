@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{% if nivel %}Editar nivel{% else %}Nuevo nivel{% endif %} - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_niveles' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if nivel %}Editar nivel{% else %}Nuevo nivel{% endif %}</h1>
+    </div>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.numero.id_for_label }}">{{ formulario.numero.label }}</label>
+            {{ formulario.numero }}
+            {{ formulario.numero.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nombre.id_for_label }}">{{ formulario.nombre.label }}</label>
+            {{ formulario.nombre }}
+            {{ formulario.nombre.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.descripcion.id_for_label }}">{{ formulario.descripcion.label }}</label>
+            {{ formulario.descripcion }}
+            {{ formulario.descripcion.errors }}
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar nivel</button>
+            <a class="boton-secundario" href="{% url 'catalogo:lista_niveles' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

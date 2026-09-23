@@ -64,4 +64,10 @@ urlpatterns = [
 
     # Punto de entrada que reparte a cada quien a su panel.
     path('', views.inicio, name='inicio'),
+
+    # Panel del administrador y alta/edicion de personas.
+    path('administracion/', views.panel_administrador, name='panel_administrador'),
+    path('personas/', views.lista_personas, name='lista_personas'),
+    path('personas/nueva/', views.crear_persona, name='crear_persona'),
+    path('personas/<int:persona_id>/editar/', views.editar_persona, name='editar_persona'),
 ]

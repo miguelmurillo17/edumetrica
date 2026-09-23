@@ -1,7 +1,5 @@
 """Vistas para que el profesor administre el catalogo de preguntas."""
 
-from urllib.parse import urlencode
-
 from django.conf import settings
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
@@ -11,9 +9,13 @@ from django.views.decorators.http import require_POST
 
 from apps.usuarios.models import Persona
 from apps.usuarios.decoradores import roles_permitidos
+from apps.usuarios.listados import resolver_orden
 
-from .models import Categoria, Materia, Nivel, Pregunta, SolicitudGeneracion
-from .forms import GenerarPreguntaForm, PreguntaForm, OpcionRespuestaFormSet
+from .models import Categoria, Institucion, Materia, Nivel, Pregunta, SolicitudGeneracion
+from .forms import (
+    GenerarPreguntaForm, PreguntaForm, OpcionRespuestaFormSet,
+    InstitucionForm, MateriaForm, CategoriaForm, DescripcionesNivelForm, NivelForm,
+)
 from .procedimientos import pasos_a_texto, texto_a_pasos
 from .servicios import (
     alcanzo_el_tope,
@@ -99,21 +101,6 @@ def lista_preguntas(request):
     else:
         nivel_id = ''
 
-    # Ordenamiento. Sin orden explicito se respeta el del modelo (mas reciente
-    # primero); el id al final desempata para que la lista no baile entre cargas.
-    orden = request.GET.get('orden', '')
-    direccion = request.GET.get('dir', 'asc')
-    if direccion not in ('asc', 'desc'):
-        direccion = 'asc'
-    if orden in ORDEN_PREGUNTAS:
-        campo = ORDEN_PREGUNTAS[orden]
-        if direccion == 'desc':
-            campo = '-' + campo
-        preguntas = preguntas.order_by(campo, 'id')
-    else:
-        orden = ''
-        direccion = 'asc'
-
     # Filtros vigentes, para conservarlos al armar los enlaces de ordenamiento.
     filtros_activos = {}
     if estado:
@@ -127,25 +114,13 @@ def lista_preguntas(request):
     if nivel_id:
         filtros_activos['nivel'] = nivel_id
 
-    # Para cada columna ordenable se arma su enlace (conservando los filtros) y
-    # se marca si es la que ordena ahora, para pintarle la flecha en la cabecera.
-    columnas_orden = {}
-    for clave in ORDEN_PREGUNTAS:
-        parametros = dict(filtros_activos)
-        parametros['orden'] = clave
-        if orden == clave and direccion == 'asc':
-            parametros['dir'] = 'desc'
-            indicador = 'asc'
-        elif orden == clave and direccion == 'desc':
-            parametros['dir'] = 'asc'
-            indicador = 'desc'
-        else:
-            parametros['dir'] = 'asc'
-            indicador = ''
-        columnas_orden[clave] = {
-            'url': '?' + urlencode(parametros),
-            'indicador': indicador,
-        }
+    # Ordenamiento. Sin orden explicito se respeta el del modelo (mas reciente
+    # primero); el id al final desempata para que la lista no baile entre cargas.
+    campo, orden, direccion, columnas_orden = resolver_orden(
+        request, ORDEN_PREGUNTAS, filtros_activos
+    )
+    if campo:
+        preguntas = preguntas.order_by(*campo, 'id')
 
     contexto = {
         'preguntas': preguntas,
@@ -389,3 +364,297 @@ def editar_pregunta(request, pregunta_id):
         'pasos': pasos,
     }
     return render(request, 'catalogo/formulario_pregunta.html', contexto)
+
+
+# El resto de las vistas de este archivo son el CRUD del administrador para
+# los catalogos: instituciones, disciplinas, asignaturas y niveles. Ninguna
+# borra registros; Materia y Categoria ya tienen su bandera "activa" para
+# retirarlas sin perder el historico de preguntas que las usan.
+
+# Columnas ordenables de cada listado del administrador.
+ORDEN_INSTITUCIONES = {'nombre': 'nombre'}
+ORDEN_MATERIAS = {'nombre': 'nombre', 'estado': 'activa'}
+ORDEN_CATEGORIAS = {'materia': 'materia__nombre', 'nombre': 'nombre', 'estado': 'activa'}
+ORDEN_NIVELES = {'numero': 'numero', 'nombre': 'nombre'}
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def lista_instituciones(request):
+    """Listado de instituciones. El modelo no trae Meta.ordering, asi que se
+    ordena por nombre aqui mismo cuando no se pide ningun orden explicito."""
+    instituciones = Institucion.objects.all()
+
+    campo, orden, direccion, columnas_orden = resolver_orden(request, ORDEN_INSTITUCIONES)
+    instituciones = instituciones.order_by(*(campo or ('nombre',)), 'id')
+
+    contexto = {
+        'instituciones': instituciones,
+        'orden': orden,
+        'direccion': direccion,
+        'columnas_orden': columnas_orden,
+    }
+    return render(request, 'catalogo/lista_instituciones.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def crear_institucion(request):
+    """Da de alta una institucion nueva."""
+    if request.method == 'POST':
+        formulario = InstitucionForm(request.POST)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, 'La institución se guardó correctamente.')
+            return redirect('catalogo:lista_instituciones')
+    else:
+        formulario = InstitucionForm()
+
+    return render(request, 'catalogo/formulario_institucion.html', {'formulario': formulario})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def editar_institucion(request, institucion_id):
+    """Modifica una institucion que ya existe."""
+    institucion = get_object_or_404(Institucion, id=institucion_id)
+
+    if request.method == 'POST':
+        formulario = InstitucionForm(request.POST, instance=institucion)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, 'La institución se actualizó correctamente.')
+            return redirect('catalogo:lista_instituciones')
+    else:
+        formulario = InstitucionForm(instance=institucion)
+
+    contexto = {'formulario': formulario, 'institucion': institucion}
+    return render(request, 'catalogo/formulario_institucion.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def lista_materias(request):
+    """Listado de disciplinas, con filtros de estado y si es cuantitativa."""
+    materias = Materia.objects.all()
+
+    estado = request.GET.get('estado', '')
+    if estado == 'activa':
+        materias = materias.filter(activa=True)
+    elif estado == 'inactiva':
+        materias = materias.filter(activa=False)
+    else:
+        estado = ''
+
+    cuantitativa = request.GET.get('cuantitativa', '')
+    if cuantitativa == 'si':
+        materias = materias.filter(es_cuantitativa=True)
+    elif cuantitativa == 'no':
+        materias = materias.filter(es_cuantitativa=False)
+    else:
+        cuantitativa = ''
+
+    filtros_activos = {}
+    if estado:
+        filtros_activos['estado'] = estado
+    if cuantitativa:
+        filtros_activos['cuantitativa'] = cuantitativa
+
+    campo, orden, direccion, columnas_orden = resolver_orden(
+        request, ORDEN_MATERIAS, filtros_activos
+    )
+    if campo:
+        materias = materias.order_by(*campo, 'id')
+
+    contexto = {
+        'materias': materias,
+        'estado': estado,
+        'cuantitativa': cuantitativa,
+        'orden': orden,
+        'direccion': direccion,
+        'columnas_orden': columnas_orden,
+        'hay_filtros': bool(filtros_activos),
+    }
+    return render(request, 'catalogo/lista_materias.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def crear_materia(request):
+    """Da de alta una disciplina nueva."""
+    if request.method == 'POST':
+        formulario = MateriaForm(request.POST)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, 'La disciplina se guardó correctamente.')
+            return redirect('catalogo:lista_materias')
+    else:
+        formulario = MateriaForm()
+
+    return render(request, 'catalogo/formulario_materia.html', {'formulario': formulario})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def editar_materia(request, materia_id):
+    """Modifica una disciplina que ya existe."""
+    materia = get_object_or_404(Materia, id=materia_id)
+
+    if request.method == 'POST':
+        formulario = MateriaForm(request.POST, instance=materia)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, 'La disciplina se actualizó correctamente.')
+            return redirect('catalogo:lista_materias')
+    else:
+        formulario = MateriaForm(instance=materia)
+
+    contexto = {'formulario': formulario, 'materia': materia}
+    return render(request, 'catalogo/formulario_materia.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def lista_categorias(request):
+    """Listado de asignaturas, con filtros de disciplina y estado."""
+    categorias = Categoria.objects.select_related('materia').all()
+
+    materia_id = request.GET.get('materia', '')
+    if materia_id.isdigit():
+        categorias = categorias.filter(materia_id=materia_id)
+    else:
+        materia_id = ''
+
+    estado = request.GET.get('estado', '')
+    if estado == 'activa':
+        categorias = categorias.filter(activa=True)
+    elif estado == 'inactiva':
+        categorias = categorias.filter(activa=False)
+    else:
+        estado = ''
+
+    filtros_activos = {}
+    if materia_id:
+        filtros_activos['materia'] = materia_id
+    if estado:
+        filtros_activos['estado'] = estado
+
+    campo, orden, direccion, columnas_orden = resolver_orden(
+        request, ORDEN_CATEGORIAS, filtros_activos
+    )
+    if campo:
+        categorias = categorias.order_by(*campo, 'id')
+
+    contexto = {
+        'categorias': categorias,
+        'materias': Materia.objects.all(),
+        'materia_id': materia_id,
+        'estado': estado,
+        'orden': orden,
+        'direccion': direccion,
+        'columnas_orden': columnas_orden,
+        'hay_filtros': bool(filtros_activos),
+    }
+    return render(request, 'catalogo/lista_categorias.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def crear_categoria(request):
+    """Da de alta una asignatura nueva dentro de una disciplina, junto con el
+    tipo de preguntas que le corresponde a cada nivel."""
+    if request.method == 'POST':
+        formulario = CategoriaForm(request.POST)
+        formulario_niveles = DescripcionesNivelForm(request.POST)
+        if formulario.is_valid() and formulario_niveles.is_valid():
+            categoria = formulario.save()
+            formulario_niveles.guardar(categoria)
+            messages.success(request, 'La asignatura se guardó correctamente.')
+            return redirect('catalogo:lista_categorias')
+    else:
+        formulario = CategoriaForm()
+        formulario_niveles = DescripcionesNivelForm()
+
+    contexto = {'formulario': formulario, 'formulario_niveles': formulario_niveles}
+    return render(request, 'catalogo/formulario_categoria.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def editar_categoria(request, categoria_id):
+    """Modifica una asignatura que ya existe, junto con el tipo de preguntas
+    que le corresponde a cada nivel."""
+    categoria = get_object_or_404(Categoria, id=categoria_id)
+
+    if request.method == 'POST':
+        formulario = CategoriaForm(request.POST, instance=categoria)
+        formulario_niveles = DescripcionesNivelForm(request.POST, categoria=categoria)
+        if formulario.is_valid() and formulario_niveles.is_valid():
+            formulario.save()
+            formulario_niveles.guardar(categoria)
+            messages.success(request, 'La asignatura se actualizó correctamente.')
+            return redirect('catalogo:lista_categorias')
+    else:
+        formulario = CategoriaForm(instance=categoria)
+        formulario_niveles = DescripcionesNivelForm(categoria=categoria)
+
+    contexto = {
+        'formulario': formulario,
+        'formulario_niveles': formulario_niveles,
+        'categoria': categoria,
+    }
+    return render(request, 'catalogo/formulario_categoria.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def lista_niveles(request):
+    """Listado de niveles de dificultad."""
+    niveles = Nivel.objects.all()
+
+    campo, orden, direccion, columnas_orden = resolver_orden(request, ORDEN_NIVELES)
+    if campo:
+        niveles = niveles.order_by(*campo, 'id')
+
+    contexto = {
+        'niveles': niveles,
+        'orden': orden,
+        'direccion': direccion,
+        'columnas_orden': columnas_orden,
+    }
+    return render(request, 'catalogo/lista_niveles.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def crear_nivel(request):
+    """Da de alta un nivel nuevo."""
+    if request.method == 'POST':
+        formulario = NivelForm(request.POST)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, 'El nivel se guardó correctamente.')
+            return redirect('catalogo:lista_niveles')
+    else:
+        formulario = NivelForm()
+
+    return render(request, 'catalogo/formulario_nivel.html', {'formulario': formulario})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def editar_nivel(request, nivel_id):
+    """Modifica un nivel que ya existe."""
+    nivel = get_object_or_404(Nivel, id=nivel_id)
+
+    if request.method == 'POST':
+        formulario = NivelForm(request.POST, instance=nivel)
+        if formulario.is_valid():
+            formulario.save()
+            messages.success(request, 'El nivel se actualizó correctamente.')
+            return redirect('catalogo:lista_niveles')
+    else:
+        formulario = NivelForm(instance=nivel)
+
+    contexto = {'formulario': formulario, 'nivel': nivel}
+    return render(request, 'catalogo/formulario_nivel.html', contexto)

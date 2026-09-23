@@ -5,12 +5,18 @@
 {% block contenido %}
 <section class="panel">
     <div class="encabezado-lista">
-        <h1>Mis evaluaciones</h1>
+        <div class="titulo-con-volver">
+            {% url 'evaluaciones:panel_profesor' as volver_url %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>Mis evaluaciones</h1>
+        </div>
         <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:crear_evaluacion' %}">Programar evaluación</a>
     </div>
 
     {% if evaluaciones %}
-    <table class="tabla">
+    {% include 'incluye/buscador_tabla.html' with tabla_id='tabla-evaluaciones' mensaje_vacio='Ninguna evaluación coincide con la búsqueda.' %}
+
+    <table class="tabla" id="tabla-evaluaciones">
         <thead>
             <tr>
                 <th>Título</th>

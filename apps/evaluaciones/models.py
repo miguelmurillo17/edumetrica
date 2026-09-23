@@ -8,6 +8,7 @@ from django.conf import settings
 from django.utils import timezone
 
 from apps.catalogo.models import Institucion, Materia, Categoria, Pregunta, OpcionRespuesta
+from config.orden_alfabetico import alfabetico
 
 
 class Grupo(models.Model):
@@ -41,7 +42,7 @@ class Grupo(models.Model):
     class Meta:
         verbose_name = 'grupo'
         verbose_name_plural = 'grupos'
-        ordering = ['nombre']
+        ordering = alfabetico('nombre')
 
     def __str__(self):
         return self.nombre

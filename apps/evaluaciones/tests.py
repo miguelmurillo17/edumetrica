@@ -21,6 +21,7 @@ from apps.catalogo.models import (
 )
 from apps.usuarios.models import Persona
 
+from .forms import GrupoForm
 from .models import (
     AsignacionDocente, CategoriaEvaluacion, Evaluacion, Grupo,
     IntentoEvaluacion, RespuestaAlumno,
@@ -493,7 +494,7 @@ class MisGruposTest(BaseEvaluacionesTest):
         respuesta = self.client.get(reverse('evaluaciones:lista_grupos'))
 
         self.assertEqual(respuesta.status_code, 200)
-        self.assertContains(respuesta, 'Ana Ruiz')
+        self.assertContains(respuesta, 'Ruiz Ana')
         # La asignatura asignada en el grupo aparece junto al profesor.
         self.assertContains(respuesta, 'Aritmética')
 
@@ -508,3 +509,164 @@ class MisGruposTest(BaseEvaluacionesTest):
 
         self.assertContains(respuesta, 'Aritmética')
         self.assertContains(respuesta, 'Álgebra')
+
+
+class GrupoFormTest(BaseEvaluacionesTest):
+    """Un alumno solo puede pertenecer a un grupo a la vez."""
+
+    def test_un_alumno_en_otro_grupo_no_aparece_disponible(self):
+        # self.alumno ya esta en self.grupo desde el setUp.
+        otro_grupo = Grupo.objects.create(nombre='Segundo B')
+
+        formulario = GrupoForm(instance=otro_grupo)
+
+        self.assertNotIn(self.alumno, formulario.fields['alumnos'].queryset)
+
+    def test_un_alumno_sin_grupo_si_aparece_disponible(self):
+        libre = Persona.objects.create_user(
+            correo='libre@prueba.mx', nombre='Cruz', apellido='Nava',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+
+        formulario = GrupoForm()
+
+        self.assertIn(libre, formulario.fields['alumnos'].queryset)
+
+    def test_al_editar_su_propio_grupo_el_alumno_si_aparece_disponible(self):
+        formulario = GrupoForm(instance=self.grupo)
+
+        self.assertIn(self.alumno, formulario.fields['alumnos'].queryset)
+
+    def test_un_renglon_sin_elegir_no_truena_ni_invalida_el_formulario(self):
+        # La tabla siempre puede traer un renglon extra en "---------": no
+        # cuenta como un alumno invalido, simplemente no aporta nada.
+        formulario = GrupoForm(
+            instance=self.grupo,
+            data={
+                'nombre': self.grupo.nombre,
+                'institucion': '',
+                'alumnos': ['', str(self.alumno.pk)],
+                'activo': 'on',
+            },
+        )
+
+        self.assertTrue(formulario.is_valid(), formulario.errors)
+        self.assertQuerySetEqual(
+            formulario.alumnos_actuales, [self.alumno], transform=lambda p: p
+        )
+
+    def test_no_deja_elegir_al_mismo_alumno_dos_veces(self):
+        formulario = GrupoForm(
+            instance=self.grupo,
+            data={
+                'nombre': self.grupo.nombre,
+                'institucion': '',
+                'alumnos': [str(self.alumno.pk), str(self.alumno.pk)],
+                'activo': 'on',
+            },
+        )
+
+        self.assertFalse(formulario.is_valid())
+        errores = formulario.non_field_errors()
+        self.assertIn('No puedes agregar al mismo alumno más de una vez.', errores)
+        # El alumno repetido ya es de este grupo: no debe salir tambien el
+        # error de "ya pertenece a otro grupo" (regresion de combinar
+        # Q(grupos__isnull=False) con ~Q(grupos=pk) en un solo filter()).
+        self.assertFalse(any('Ya pertenecen a otro grupo' in e for e in errores))
+
+    def test_no_deja_guardar_a_un_alumno_que_se_asigno_a_otro_grupo_mientras_tanto(self):
+        # El queryset del campo es perezoso: aunque se arma al abrir el
+        # formulario, se vuelve a consultar hasta que algo lo evalua. Si
+        # alguien mas asigna al alumno a otro grupo antes de que este se
+        # guarde, no debe dejarlo pasar.
+        libre = Persona.objects.create_user(
+            correo='libre3@prueba.mx', nombre='Elia', apellido='Nunez',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+        formulario = GrupoForm(
+            instance=self.grupo,
+            data={
+                'nombre': self.grupo.nombre,
+                'institucion': '',
+                'alumnos': [str(libre.pk)],
+                'activo': 'on',
+            },
+        )
+        otro_grupo = Grupo.objects.create(nombre='Cuarto D')
+        otro_grupo.alumnos.add(libre)
+
+        self.assertFalse(formulario.is_valid())
+        self.assertNotIn(libre, self.grupo.alumnos.all())
+
+
+class CrearGrupoTest(BaseEvaluacionesTest):
+    """El administrador da de alta grupos desde /grupos/nuevo/."""
+
+    def setUp(self):
+        super().setUp()
+        self.administrador = Persona.objects.create_user(
+            correo='admin@prueba.mx', nombre='Cara', apellido='Diaz',
+            password='Edumetrica2026', rol=Persona.Rol.ADMINISTRADOR,
+        )
+        self.client.force_login(self.administrador)
+
+    def datos_formset_vacio(self):
+        return {
+            'asignaciones-TOTAL_FORMS': '1',
+            'asignaciones-INITIAL_FORMS': '0',
+            'asignaciones-MIN_NUM_FORMS': '0',
+            'asignaciones-MAX_NUM_FORMS': '1000',
+            'asignaciones-0-profesor': '',
+            'asignaciones-0-categoria': '',
+        }
+
+    def test_no_deja_asignar_a_un_alumno_que_ya_esta_en_otro_grupo(self):
+        # self.alumno ya esta en self.grupo desde el setUp.
+        datos = {
+            'nombre': 'Tercero C',
+            'institucion': '',
+            'alumnos': [self.alumno.pk],
+            'activo': 'on',
+        }
+        datos.update(self.datos_formset_vacio())
+
+        respuesta = self.client.post(reverse('evaluaciones:crear_grupo'), datos)
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(Grupo.objects.filter(nombre='Tercero C').exists())
+
+    def test_un_renglon_vacio_no_truena_al_reintentar_con_otro_error(self):
+        # Reproduce el bug: un renglon en "---------" junto con un error en
+        # otro campo (aqui, el alumno que ya esta en otro grupo) no debe
+        # tronar al repintar la tabla de alumnos.
+        datos = {
+            'nombre': 'Tercero C',
+            'institucion': '',
+            'alumnos': ['', str(self.alumno.pk)],
+            'activo': 'on',
+        }
+        datos.update(self.datos_formset_vacio())
+
+        respuesta = self.client.post(reverse('evaluaciones:crear_grupo'), datos)
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertFalse(Grupo.objects.filter(nombre='Tercero C').exists())
+
+    def test_deja_asignar_a_un_alumno_libre(self):
+        libre = Persona.objects.create_user(
+            correo='libre2@prueba.mx', nombre='Dana', apellido='Soto',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+        datos = {
+            'nombre': 'Tercero C',
+            'institucion': '',
+            'alumnos': [libre.pk],
+            'activo': 'on',
+        }
+        datos.update(self.datos_formset_vacio())
+
+        respuesta = self.client.post(reverse('evaluaciones:crear_grupo'), datos)
+
+        self.assertEqual(respuesta.status_code, 302)
+        nuevo = Grupo.objects.get(nombre='Tercero C')
+        self.assertIn(libre, nuevo.alumnos.all())

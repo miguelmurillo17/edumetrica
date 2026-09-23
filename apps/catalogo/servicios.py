@@ -113,6 +113,18 @@ def _guardar_pregunta(generada, dictamen, solicitud, profesor):
     return pregunta
 
 
+def descripcion_para_ia(*, categoria, nivel):
+    """Texto que se le manda a la IA para describir el nivel en esta asignatura.
+
+    Usa lo que capturo el administrador en la asignatura; si esta vacio cae en
+    el nombre del nivel, para no mandar una cadena vacia.
+    """
+    fila = categoria.descripciones_nivel.filter(nivel=nivel).first()
+    if fila and fila.descripcion:
+        return fila.descripcion
+    return nivel.nombre
+
+
 def crear_solicitud(*, profesor, categoria, nivel):
     """Registra la solicitud antes de llamar al proveedor.
 
@@ -163,7 +175,7 @@ def generar_pregunta(*, profesor, categoria, nivel, solicitud=None):
             categoria=categoria.nombre,
             nivel=nivel.numero,
             cantidad=1,
-            descripcion_nivel=nivel.nombre,
+            descripcion_nivel=descripcion_para_ia(categoria=categoria, nivel=nivel),
             # Si la materia es cuantitativa, la pregunta tiene que traer la
             # expresion o se estaria saltando el verificador.
             exige_expresion=materia.es_cuantitativa,

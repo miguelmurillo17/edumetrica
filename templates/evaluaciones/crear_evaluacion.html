@@ -5,7 +5,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>Programar evaluación</h1>
+    <div class="titulo-con-volver">
+        {% url 'evaluaciones:lista_evaluaciones' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Programar evaluación</h1>
+    </div>
 
     <form method="post" class="formulario">
         {% csrf_token %}
@@ -114,7 +118,7 @@
 
         <div class="acciones">
             <button type="submit" class="boton-principal">Programar</button>
-            <a class="enlace-cancelar" href="{% url 'evaluaciones:lista_evaluaciones' %}">Cancelar</a>
+            <a class="boton-secundario" href="{% url 'evaluaciones:lista_evaluaciones' %}">Cancelar</a>
         </div>
     </form>
 </section>
@@ -128,6 +132,41 @@
         const cuerpo = document.getElementById('renglones-categorias');
         const molde = document.getElementById('molde-categoria');
         const total = document.getElementById('id_categorias_elegidas-TOTAL_FORMS');
+        const selectMateria = document.getElementById('id_materia');
+
+        // Cada opcion de asignatura trae su disciplina en data-disciplina
+        // (vease SelectConDisciplina en apps/evaluaciones/forms.py). Aqui solo
+        // se ocultan las que no correspondan a la disciplina elegida, sin
+        // pedir nada al servidor.
+        function filtrarSelectCategoria(select, disciplina) {
+            let opcionValida = false;
+            Array.from(select.options).forEach(function (opcion) {
+                if (!opcion.value) {
+                    return;
+                }
+                const coincide = !disciplina || opcion.dataset.disciplina === disciplina;
+                opcion.hidden = !coincide;
+                opcion.disabled = !coincide;
+                if (coincide && opcion.selected) {
+                    opcionValida = true;
+                }
+            });
+            if (!opcionValida) {
+                select.value = '';
+            }
+        }
+
+        function filtrarTodasLasCategorias() {
+            const disciplina = selectMateria.value;
+            document.querySelectorAll('select[name$="-categoria"]').forEach(function (select) {
+                filtrarSelectCategoria(select, disciplina);
+            });
+        }
+
+        if (selectMateria) {
+            selectMateria.addEventListener('change', filtrarTodasLasCategorias);
+            filtrarTodasLasCategorias();
+        }
 
         function conectarQuitar(renglon) {
             const boton = renglon.querySelector('.boton-quitar');
@@ -156,6 +195,9 @@
             cuerpo.appendChild(renglon);
             conectarQuitar(renglon);
             total.value = indice + 1;
+            if (selectMateria) {
+                filtrarSelectCategoria(renglon.querySelector('select[name$="-categoria"]'), selectMateria.value);
+            }
         });
     })();
 </script>

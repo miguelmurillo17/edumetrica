@@ -32,4 +32,29 @@ urlpatterns = [
         views.resolver_pregunta,
         name='resolver_pregunta',
     ),
+
+    # CRUD del administrador para los catalogos.
+    path('instituciones/', views.lista_instituciones, name='lista_instituciones'),
+    path('instituciones/nueva/', views.crear_institucion, name='crear_institucion'),
+    path(
+        'instituciones/<int:institucion_id>/editar/',
+        views.editar_institucion,
+        name='editar_institucion',
+    ),
+
+    path('materias/', views.lista_materias, name='lista_materias'),
+    path('materias/nueva/', views.crear_materia, name='crear_materia'),
+    path('materias/<int:materia_id>/editar/', views.editar_materia, name='editar_materia'),
+
+    path('categorias/', views.lista_categorias, name='lista_categorias'),
+    path('categorias/nueva/', views.crear_categoria, name='crear_categoria'),
+    path(
+        'categorias/<int:categoria_id>/editar/',
+        views.editar_categoria,
+        name='editar_categoria',
+    ),
+
+    path('niveles/', views.lista_niveles, name='lista_niveles'),
+    path('niveles/nuevo/', views.crear_nivel, name='crear_nivel'),
+    path('niveles/<int:nivel_id>/editar/', views.editar_nivel, name='editar_nivel'),
 ]

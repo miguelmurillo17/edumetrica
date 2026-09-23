@@ -5,7 +5,11 @@
 {% block contenido %}
 <section class="panel">
     <div class="encabezado-lista">
-        <h1>Preguntas</h1>
+        <div class="titulo-con-volver">
+            {% if user.es_administrador %}{% url 'usuarios:panel_administrador' as volver_url %}{% elif user.es_profesor %}{% url 'evaluaciones:panel_profesor' as volver_url %}{% endif %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>Preguntas</h1>
+        </div>
         <div class="acciones">
             {% if hay_ia %}
             <a class="boton-secundario boton-compacto" href="{% url 'catalogo:generar_pregunta' %}">Generar con IA</a>
@@ -85,16 +89,7 @@
     </form>
 
     {% if preguntas %}
-    {% comment %}
-    Barra de la tabla: el buscador vive aqui y trabaja en el navegador sobre los
-    renglones que el servidor ya filtro y ordeno.
-    {% endcomment %}
-    <div class="barra-tabla">
-        <input type="search" id="buscador-tabla" class="buscador-tabla"
-               placeholder="Buscar en la tabla..." autocomplete="off"
-               aria-label="Buscar palabras en la tabla">
-        <span class="conteo-tabla" id="conteo-tabla"></span>
-    </div>
+    {% include 'incluye/buscador_tabla.html' with tabla_id='tabla-preguntas' mensaje_vacio='Ninguna pregunta coincide con la búsqueda.' %}
 
     <table class="tabla" id="tabla-preguntas">
         <thead>
@@ -170,135 +165,10 @@
         </tbody>
     </table>
 
-    <p id="sin-resultados-busqueda" class="ayuda" hidden>
-        Ninguna pregunta coincide con la búsqueda.
-    </p>
     {% elif hay_filtros %}
     <p>No hay preguntas que cumplan los filtros elegidos.</p>
     {% else %}
     <p>Todavía no hay preguntas registradas. Da de alta la primera.</p>
     {% endif %}
 </section>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Buscador con resaltado sobre la tabla ya filtrada por el servidor. Trabaja
-    // en el navegador porque busca en todas las columnas a la vez y pinta las
-    // coincidencias, algo que no tiene sentido resolver con una recarga.
-    (function () {
-        const buscador = document.getElementById('buscador-tabla');
-        const tabla = document.getElementById('tabla-preguntas');
-        if (!buscador || !tabla) {
-            return;
-        }
-        const renglones = Array.from(tabla.querySelectorAll('tbody tr'));
-        const aviso = document.getElementById('sin-resultados-busqueda');
-        const conteo = document.getElementById('conteo-tabla');
-        const total = renglones.length;
-
-        // Quita acentos y pasa a minusculas, para que "algebra" encuentre
-        // "Álgebra" y no dependa de mayusculas.
-        function normalizar(texto) {
-            return texto
-                .normalize('NFD')
-                .replace(/[̀-ͯ]/g, '')
-                .toLowerCase();
-        }
-
-        // Cada letra del termino se vuelve un grupo que acepta sus variantes con
-        // acento, para poder resaltar aunque el texto de la celda si los lleve.
-        const equivalentes = {
-            a: '[aáàäâã]', e: '[eéèëê]', i: '[iíìïî]',
-            o: '[oóòöô]', u: '[uúùüû]', n: '[nñ]', c: '[cç]',
-        };
-
-        function aExpresion(termino) {
-            const escapado = termino.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-            let patron = '';
-            for (const letra of escapado) {
-                patron += equivalentes[letra] || letra;
-            }
-            return new RegExp(patron, 'gi');
-        }
-
-        // Guarda el contenido original de cada celda para poder rehacer el
-        // resaltado en cada tecla sin ir perdiendo el marcado anterior.
-        renglones.forEach(function (renglon) {
-            Array.from(renglon.cells).forEach(function (celda) {
-                celda.dataset.original = celda.innerHTML;
-            });
-            renglon.dataset.texto = normalizar(renglon.textContent);
-        });
-
-        function resaltarCelda(celda, expresiones) {
-            const paseador = document.createTreeWalker(celda, NodeFilter.SHOW_TEXT);
-            const nodos = [];
-            while (paseador.nextNode()) {
-                nodos.push(paseador.currentNode);
-            }
-            nodos.forEach(function (nodo) {
-                let coincide = false;
-                for (const expresion of expresiones) {
-                    expresion.lastIndex = 0;
-                    if (expresion.test(nodo.nodeValue)) {
-                        coincide = true;
-                        break;
-                    }
-                }
-                if (!coincide) {
-                    return;
-                }
-                let html = nodo.nodeValue.replace(/[&<>]/g, function (caracter) {
-                    return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[caracter];
-                });
-                for (const expresion of expresiones) {
-                    html = html.replace(expresion, '<mark class="resaltado">$&</mark>');
-                }
-                const envoltura = document.createElement('span');
-                envoltura.innerHTML = html;
-                nodo.replaceWith(envoltura);
-            });
-        }
-
-        function filtrar() {
-            const consulta = buscador.value.trim();
-            const terminos = normalizar(consulta).split(/\s+/).filter(Boolean);
-            let visibles = 0;
-
-            renglones.forEach(function (renglon) {
-                // Se parte del contenido original: limpia el resaltado anterior.
-                Array.from(renglon.cells).forEach(function (celda) {
-                    celda.innerHTML = celda.dataset.original;
-                });
-
-                const pasa = terminos.every(function (termino) {
-                    return renglon.dataset.texto.indexOf(termino) !== -1;
-                });
-                renglon.hidden = !pasa;
-                if (pasa) {
-                    visibles += 1;
-                }
-            });
-
-            if (terminos.length) {
-                const expresiones = terminos.map(aExpresion);
-                renglones.forEach(function (renglon) {
-                    if (!renglon.hidden) {
-                        Array.from(renglon.cells).forEach(function (celda) {
-                            resaltarCelda(celda, expresiones);
-                        });
-                    }
-                });
-                conteo.textContent = visibles + ' de ' + total;
-            } else {
-                conteo.textContent = '';
-            }
-
-            aviso.hidden = visibles !== 0;
-        }
-
-        buscador.addEventListener('input', filtrar);
-    })();
-</script>
 {% endblock %}

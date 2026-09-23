@@ -365,7 +365,7 @@ class RevisarPreguntaTest(BaseCatalogoTest):
 
         self.assertEqual(respuesta.status_code, 200)
         self.assertFalse(respuesta.context['es_mia'])
-        self.assertContains(respuesta, 'Ana Ruiz')
+        self.assertContains(respuesta, 'Ruiz Ana')
 
     def test_corregir_un_borrador_regresa_a_la_revision(self):
         pregunta = self.crear_pregunta()

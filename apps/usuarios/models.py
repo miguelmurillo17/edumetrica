@@ -3,8 +3,12 @@ Modelo de usuario del sistema. Toda persona que entra a Edumetrica
 (administrador, profesor o alumno) se guarda en la tabla Persona.
 """
 
+from datetime import date
 from django.db import models
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
+from django.core.exceptions import ValidationError
+
+from config.orden_alfabetico import alfabetico
 
 
 class AdministradorPersonas(BaseUserManager):
@@ -46,12 +50,12 @@ class Persona(AbstractBaseUser, PermissionsMixin):
 
     class Rol(models.TextChoices):
         ADMINISTRADOR = 'administrador', 'Administrador'
-        PROFESOR = 'profesor', 'Profesor'
         ALUMNO = 'alumno', 'Alumno'
+        PROFESOR = 'profesor', 'Profesor'
 
     class Sexo(models.TextChoices):
-        MASCULINO = 'masculino', 'Masculino'
         FEMENINO = 'femenino', 'Femenino'
+        MASCULINO = 'masculino', 'Masculino'
         OTRO = 'otro', 'Otro'
 
     nombre = models.CharField(max_length=100)
@@ -62,7 +66,7 @@ class Persona(AbstractBaseUser, PermissionsMixin):
         choices=Sexo.choices,
         blank=True,
     )
-    correo = models.EmailField(unique=True)
+    correo = models.EmailField(unique=True, verbose_name='correo electrónico')
     rol = models.CharField(
         max_length=15,
         choices=Rol.choices,
@@ -86,14 +90,23 @@ class Persona(AbstractBaseUser, PermissionsMixin):
     class Meta:
         verbose_name = 'persona'
         verbose_name_plural = 'personas'
-        ordering = ['apellido', 'nombre']
+        ordering = alfabetico('apellido', 'nombre')
 
     def __str__(self):
-        return f'{self.nombre} {self.apellido} ({self.get_rol_display()})'
+        return f'{self.apellido} {self.nombre} ({self.get_rol_display()})'
 
     @property
     def nombre_completo(self):
-        return f'{self.nombre} {self.apellido}'
+        return f'{self.apellido} {self.nombre}'
+
+    def clean(self):
+        super().clean()
+        if self.fecha_nacimiento:
+            edad = (date.today() - self.fecha_nacimiento).days / 365.25
+            if edad > 80:
+                raise ValidationError(
+                    {'fecha_nacimiento': 'La fecha de nacimiento no puede ser más de 80 años atrás.'}
+                )
 
     # Atajos para preguntar el rol de una persona de forma legible.
     @property

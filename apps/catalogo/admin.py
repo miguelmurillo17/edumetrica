@@ -3,8 +3,8 @@
 from django.contrib import admin
 
 from .models import (
-    Institucion, Materia, Categoria, Nivel, Pregunta, OpcionRespuesta,
-    SolicitudGeneracion,
+    Institucion, Materia, Categoria, CategoriaNivel, Nivel, Pregunta,
+    OpcionRespuesta, SolicitudGeneracion,
 )
 from .forms import OpcionRespuestaForm, BaseOpcionesFormSet, NUMERO_OPCIONES
 
@@ -22,11 +22,19 @@ class MateriaAdmin(admin.ModelAdmin):
     search_fields = ('nombre',)
 
 
+class CategoriaNivelInline(admin.TabularInline):
+    """El tipo de preguntas que corresponde a cada nivel de esta asignatura."""
+    model = CategoriaNivel
+    extra = 0
+    can_delete = False
+
+
 @admin.register(Categoria)
 class CategoriaAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'materia', 'activa')
     list_filter = ('materia', 'activa')
     search_fields = ('nombre',)
+    inlines = [CategoriaNivelInline]
 
 
 @admin.register(Nivel)

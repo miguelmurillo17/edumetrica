@@ -1,0 +1,58 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{% if categoria %}Editar asignatura{% else %}Nueva asignatura{% endif %} - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_categorias' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if categoria %}Editar asignatura{% else %}Nueva asignatura{% endif %}</h1>
+    </div>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.materia.id_for_label }}">{{ formulario.materia.label }}</label>
+            {{ formulario.materia }}
+            {{ formulario.materia.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.nombre.id_for_label }}">{{ formulario.nombre.label }}</label>
+            {{ formulario.nombre }}
+            {{ formulario.nombre.errors }}
+        </div>
+
+        <div class="campo campo-casilla">
+            <label for="{{ formulario.activa.id_for_label }}">{{ formulario.activa.label }}</label>
+            {{ formulario.activa }}
+            {{ formulario.activa.errors }}
+        </div>
+
+        <h2>Tipo de preguntas por nivel</h2>
+        <p class="ayuda">
+            Describe qué debe traer una pregunta de esta asignatura en cada
+            nivel; se le envía a la inteligencia artificial junto con el
+            nivel al generar una pregunta nueva.
+        </p>
+        {% for campo in formulario_niveles %}
+        <div class="campo">
+            <label for="{{ campo.id_for_label }}">{{ campo.label }}</label>
+            {{ campo }}
+            {{ campo.errors }}
+        </div>
+        {% endfor %}
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar asignatura</button>
+            <a class="boton-secundario" href="{% url 'catalogo:lista_categorias' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

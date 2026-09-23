@@ -1,0 +1,14 @@
+{% comment %}
+Flecha para volver a la pantalla desde la que naturalmente se llego a esta.
+Si no se pasa url no se dibuja nada (por ejemplo, un profesor no tiene panel
+por encima del suyo). Se incluye pasandole la direccion:
+
+    {% include 'incluye/boton_volver.html' with url=... %}
+{% endcomment %}
+{% if url %}
+<a class="boton-icono" href="{{ url }}" title="Volver" aria-label="Volver">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+        <path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/>
+    </svg>
+</a>
+{% endif %}

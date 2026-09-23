@@ -1,0 +1,52 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{% if materia %}Editar disciplina{% else %}Nueva disciplina{% endif %} - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_materias' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if materia %}Editar disciplina{% else %}Nueva disciplina{% endif %}</h1>
+    </div>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.nombre.id_for_label }}">{{ formulario.nombre.label }}</label>
+            {{ formulario.nombre }}
+            {{ formulario.nombre.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.descripcion.id_for_label }}">{{ formulario.descripcion.label }}</label>
+            {{ formulario.descripcion }}
+            {{ formulario.descripcion.errors }}
+        </div>
+
+        <div class="campo campo-casilla">
+            <label for="{{ formulario.es_cuantitativa.id_for_label }}">{{ formulario.es_cuantitativa.label }}</label>
+            {{ formulario.es_cuantitativa }}
+            <!-- <p class="ayuda">Márcala si sus preguntas generadas con IA deben traer
+               una expresión que el verificador simbólico pueda revisar.</p> -->
+            {{ formulario.es_cuantitativa.errors }}
+        </div>
+
+        <div class="campo campo-casilla">
+            <label for="{{ formulario.activa.id_for_label }}">{{ formulario.activa.label }}</label>
+            {{ formulario.activa }}
+            {{ formulario.activa.errors }}
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar disciplina</button>
+            <a class="boton-secundario" href="{% url 'catalogo:lista_materias' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

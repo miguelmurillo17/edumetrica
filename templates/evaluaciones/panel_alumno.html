@@ -4,7 +4,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>Hola, {{ user.nombre }}</h1>
+    <div class="titulo-con-volver">
+        {% if user.is_superuser %}{% url 'usuarios:inicio' as volver_url %}{% endif %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Hola, {{ user.nombre }}</h1>
+    </div>
     <p>Estas son tus evaluaciones. Presenta las que estén disponibles.</p>
 
     {% if evaluaciones %}

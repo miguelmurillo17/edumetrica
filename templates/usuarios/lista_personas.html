@@ -1,0 +1,105 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Personas - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="encabezado-lista">
+        <div class="titulo-con-volver">
+            {% url 'usuarios:panel_administrador' as volver_url %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>Personas</h1>
+        </div>
+        <a class="boton-principal boton-compacto" href="{% url 'usuarios:crear_persona' %}">Nueva persona</a>
+    </div>
+
+    <form method="get" class="filtros">
+        <input type="hidden" name="orden" value="{{ orden }}">
+        <input type="hidden" name="dir" value="{{ direccion }}">
+
+        <div class="campo-filtro">
+            <label for="filtro-rol">Rol</label>
+            <select name="rol" id="filtro-rol">
+                <option value="">Todos</option>
+                {% for clave, etiqueta in roles %}
+                <option value="{{ clave }}" {% if rol == clave %}selected{% endif %}>{{ etiqueta }}</option>
+                {% endfor %}
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-estado">Estado</label>
+            <select name="estado" id="filtro-estado">
+                <option value="">Todos</option>
+                <option value="activa" {% if estado == 'activa' %}selected{% endif %}>Activa</option>
+                <option value="inactiva" {% if estado == 'inactiva' %}selected{% endif %}>Inactiva</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro acciones-filtro">
+            <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
+            {% if hay_filtros %}
+            <a class="boton-secundario boton-compacto" href="{% url 'usuarios:lista_personas' %}">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if personas %}
+    {% include 'incluye/buscador_tabla.html' with tabla_id='tabla-personas' mensaje_vacio='Ninguna persona coincide con la búsqueda.' %}
+
+    <table class="tabla" id="tabla-personas">
+        <thead>
+            <tr>
+                <th class="columna-icono"></th>
+                <th>
+                    <a class="orden{% if columnas_orden.nombre.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.nombre.url }}">
+                        Nombre
+                        <span class="flecha-orden">{% if columnas_orden.nombre.indicador == 'asc' %}&#8593;{% elif columnas_orden.nombre.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.correo.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.correo.url }}">
+                        Correo
+                        <span class="flecha-orden">{% if columnas_orden.correo.indicador == 'asc' %}&#8593;{% elif columnas_orden.correo.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.rol.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.rol.url }}">
+                        Rol
+                        <span class="flecha-orden">{% if columnas_orden.rol.indicador == 'asc' %}&#8593;{% elif columnas_orden.rol.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>
+                    <a class="orden{% if columnas_orden.estado.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.estado.url }}">
+                        Estado
+                        <span class="flecha-orden">{% if columnas_orden.estado.indicador == 'asc' %}&#8593;{% elif columnas_orden.estado.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for persona in personas %}
+            <tr>
+                <td>
+                    {% url 'usuarios:editar_persona' persona.id as url_editar %}
+                    {% include 'incluye/boton_editar.html' with url=url_editar %}
+                </td>
+                <td>{{ persona.nombre_completo }}</td>
+                <td>{{ persona.correo }}</td>
+                <td>{{ persona.get_rol_display }}</td>
+                <td>
+                    <span class="estado {% if persona.is_active %}estado-activo{% else %}estado-inactivo{% endif %}">
+                        {% if persona.is_active %}Activa{% else %}Inactiva{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% elif hay_filtros %}
+    <p>No hay personas que cumplan los filtros elegidos.</p>
+    {% else %}
+    <p>Todavía no hay personas registradas.</p>
+    {% endif %}
+</section>
+{% endblock %}

@@ -4,7 +4,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>Panel del profesor</h1>
+    <div class="titulo-con-volver">
+        {% if user.is_superuser %}{% url 'usuarios:inicio' as volver_url %}{% endif %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Panel del profesor</h1>
+    </div>
     <p>Bienvenido, {{ user.nombre }}. Desde aquí podrás programar evaluaciones
        y dar seguimiento al avance de tus grupos.</p>
 

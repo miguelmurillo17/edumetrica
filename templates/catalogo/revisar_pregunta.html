@@ -4,7 +4,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>Revisar la pregunta generada</h1>
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_preguntas' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Revisar la pregunta generada</h1>
+    </div>
 
     {% if es_mia %}
     <p class="ayuda">
@@ -90,7 +94,7 @@
                 Descartar
             </button>
         </form>
-        <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Dejarla para después</a>
+        <a class="boton-secundario" href="{% url 'catalogo:lista_preguntas' %}">Dejarla para después</a>
     </div>
 </section>
 {% endblock %}

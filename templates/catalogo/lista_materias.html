@@ -1,0 +1,92 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Disciplinas - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="encabezado-lista">
+        <div class="titulo-con-volver">
+            {% url 'usuarios:panel_administrador' as volver_url %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>Disciplinas</h1>
+        </div>
+        <a class="boton-principal boton-compacto" href="{% url 'catalogo:crear_materia' %}">Nueva disciplina</a>
+    </div>
+
+    <form method="get" class="filtros">
+        <input type="hidden" name="orden" value="{{ orden }}">
+        <input type="hidden" name="dir" value="{{ direccion }}">
+
+        <div class="campo-filtro">
+            <label for="filtro-estado">Estado</label>
+            <select name="estado" id="filtro-estado">
+                <option value="">Todos</option>
+                <option value="activa" {% if estado == 'activa' %}selected{% endif %}>Activa</option>
+                <option value="inactiva" {% if estado == 'inactiva' %}selected{% endif %}>Inactiva</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro">
+            <label for="filtro-cuantitativa">Cuantitativa</label>
+            <select name="cuantitativa" id="filtro-cuantitativa">
+                <option value="">Todas</option>
+                <option value="si" {% if cuantitativa == 'si' %}selected{% endif %}>Sí</option>
+                <option value="no" {% if cuantitativa == 'no' %}selected{% endif %}>No</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro acciones-filtro">
+            <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
+            {% if hay_filtros %}
+            <a class="boton-secundario boton-compacto" href="{% url 'catalogo:lista_materias' %}">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+
+    {% if materias %}
+    {% include 'incluye/buscador_tabla.html' with tabla_id='tabla-materias' mensaje_vacio='Ninguna disciplina coincide con la búsqueda.' %}
+
+    <table class="tabla" id="tabla-materias">
+        <thead>
+            <tr>
+                <th class="columna-icono"></th>
+                <th>
+                    <a class="orden{% if columnas_orden.nombre.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.nombre.url }}">
+                        Nombre
+                        <span class="flecha-orden">{% if columnas_orden.nombre.indicador == 'asc' %}&#8593;{% elif columnas_orden.nombre.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+                <th>Cuantitativa</th>
+                <th>
+                    <a class="orden{% if columnas_orden.estado.indicador %} orden-activo{% endif %}" href="{{ columnas_orden.estado.url }}">
+                        Estado
+                        <span class="flecha-orden">{% if columnas_orden.estado.indicador == 'asc' %}&#8593;{% elif columnas_orden.estado.indicador == 'desc' %}&#8595;{% else %}&#8597;{% endif %}</span>
+                    </a>
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for materia in materias %}
+            <tr>
+                <td>
+                    {% url 'catalogo:editar_materia' materia.id as url_editar %}
+                    {% include 'incluye/boton_editar.html' with url=url_editar %}
+                </td>
+                <td>{{ materia.nombre }}</td>
+                <td>{% if materia.es_cuantitativa %}Sí{% else %}No{% endif %}</td>
+                <td>
+                    <span class="estado {% if materia.activa %}estado-activo{% else %}estado-inactivo{% endif %}">
+                        {% if materia.activa %}Activa{% else %}Inactiva{% endif %}
+                    </span>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% elif hay_filtros %}
+    <p>No hay disciplinas que cumplan los filtros elegidos.</p>
+    {% else %}
+    <p>Todavía no hay disciplinas registradas. Da de alta la primera.</p>
+    {% endif %}
+</section>
+{% endblock %}

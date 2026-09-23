@@ -4,7 +4,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>Generar una pregunta</h1>
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_preguntas' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>Generar una pregunta</h1>
+    </div>
     <p class="ayuda">
         La inteligencia artificial propone la pregunta, el sistema comprueba
         su aritmética y tú decides si entra al banco. Se genera una a la vez.
@@ -34,7 +38,7 @@
 
         <div class="acciones">
             <button type="submit" class="boton-principal">Generar pregunta</button>
-            <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Cancelar</a>
+            <a class="boton-secundario" href="{% url 'catalogo:lista_preguntas' %}">Cancelar</a>
         </div>
     </form>
 </section>

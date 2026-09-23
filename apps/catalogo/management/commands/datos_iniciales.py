@@ -1,6 +1,6 @@
 """
 Comando para cargar los datos minimos con los que arranca el sistema:
-los seis niveles de dificultad, una institucion y una materia de ejemplo,
+los tres niveles de dificultad, una institucion y una materia de ejemplo,
 y un usuario de cada rol para poder probar la plataforma.
 
 Se ejecuta con: python manage.py datos_iniciales
@@ -29,14 +29,11 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS('Datos iniciales cargados correctamente.'))
 
     def crear_niveles(self):
-        """Da de alta los seis niveles de dificultad que maneja el sistema."""
+        """Da de alta los tres niveles de dificultad que maneja el sistema."""
         nombres = {
             1: 'Básico',
-            2: 'Elemental',
-            3: 'Intermedio',
-            4: 'Avanzado',
-            5: 'Superior',
-            6: 'Experto',
+            2: 'Intermedio',
+            3: 'Avanzado',
         }
         for numero, nombre in nombres.items():
             Nivel.objects.get_or_create(

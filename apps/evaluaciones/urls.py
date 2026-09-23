@@ -12,8 +12,10 @@ urlpatterns = [
     path('profesor/', views.panel_profesor, name='panel_profesor'),
     path('alumno/', views.panel_alumno, name='panel_alumno'),
 
-    # Grupos del profesor
+    # Grupos: el profesor solo consulta, el administrador tambien da de alta y edita.
     path('grupos/', views.lista_grupos, name='lista_grupos'),
+    path('grupos/nuevo/', views.crear_grupo, name='crear_grupo'),
+    path('grupos/<int:grupo_id>/editar/', views.editar_grupo, name='editar_grupo'),
 
     # Evaluaciones del profesor
     path('evaluaciones/', views.lista_evaluaciones, name='lista_evaluaciones'),

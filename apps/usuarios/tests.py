@@ -11,6 +11,7 @@ restablecimiento no encontraria a nadie.
 """
 
 import re
+from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -92,13 +93,69 @@ class PersonaTest(TestCase):
         self.assertFalse(alumno.es_profesor)
 
     def test_nombre_completo(self):
-        self.assertEqual(self.crear().nombre_completo, 'Beto Lara')
+        self.assertEqual(self.crear().nombre_completo, 'Lara Beto')
 
     def test_se_entra_con_el_correo_y_no_con_un_usuario(self):
         # Las dos constantes tienen que apuntar al correo. La segunda es la
         # que usa el restablecimiento para encontrar a la persona.
         self.assertEqual(get_user_model().USERNAME_FIELD, 'correo')
         self.assertEqual(get_user_model().EMAIL_FIELD, 'correo')
+
+    def test_rechaza_fecha_nacimiento_hace_mas_de_80_anos(self):
+        # Más de 80 años atrás debe ser rechazado.
+        hace_80_anos_y_un_dia = date.today() - timedelta(days=80*365 + 1)
+        persona = Persona(
+            correo='viejo@edumetrica.mx',
+            nombre='Beto',
+            apellido='Lara',
+            fecha_nacimiento=hace_80_anos_y_un_dia,
+        )
+        with self.assertRaises(ValidationError):
+            persona.full_clean()
+
+    def test_permite_fecha_nacimiento_hace_menos_de_80_anos(self):
+        # Menos de 80 años atrás debe ser permitido.
+        hace_79_anos = date.today() - timedelta(days=79*365)
+        persona = Persona(
+            correo='joven@edumetrica.mx',
+            nombre='Beto',
+            apellido='Lara',
+            fecha_nacimiento=hace_79_anos,
+        )
+        try:
+            persona.full_clean()
+        except ValidationError as e:
+            if 'fecha_nacimiento' in e.error_dict:
+                self.fail('No debería rechazar fecha de nacimiento hace menos de 80 años')
+
+    def test_permite_fecha_nacimiento_exactamente_80_anos(self):
+        # Exactamente 80 años atrás debe ser permitido.
+        hace_80_anos = date.today() - timedelta(days=80*365)
+        persona = Persona(
+            correo='exacto@edumetrica.mx',
+            nombre='Beto',
+            apellido='Lara',
+            fecha_nacimiento=hace_80_anos,
+        )
+        try:
+            persona.full_clean()
+        except ValidationError as e:
+            if 'fecha_nacimiento' in e.error_dict:
+                self.fail('No debería rechazar fecha de nacimiento exactamente hace 80 años')
+
+    def test_permite_sin_fecha_nacimiento(self):
+        # Sin fecha de nacimiento debe ser permitido (campo es opcional).
+        persona = Persona(
+            correo='sin_fecha@edumetrica.mx',
+            nombre='Beto',
+            apellido='Lara',
+            fecha_nacimiento=None,
+        )
+        try:
+            persona.full_clean()
+        except ValidationError as e:
+            if 'fecha_nacimiento' in e.error_dict:
+                self.fail('No debería rechazar sin fecha de nacimiento')
 
 
 class InicioSesionTest(TestCase):
@@ -186,12 +243,12 @@ class RepartoPorRolTest(TestCase):
 
         self.assertRedirects(respuesta, reverse('evaluaciones:panel_profesor'))
 
-    def test_el_administrador_va_al_panel_de_django(self):
+    def test_el_administrador_va_a_su_panel(self):
         self.crear_y_entrar(Persona.Rol.ADMINISTRADOR)
 
         respuesta = self.client.get(reverse('usuarios:inicio'))
 
-        self.assertRedirects(respuesta, '/admin/', target_status_code=302)
+        self.assertRedirects(respuesta, reverse('usuarios:panel_administrador'))
 
     def test_el_superusuario_elige_entre_los_tres(self):
         # No se le manda a uno porque puede trabajar desde cualquiera.

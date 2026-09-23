@@ -4,7 +4,11 @@
 
 {% block contenido %}
 <section class="panel">
-    <h1>{% if pregunta %}Editar pregunta{% else %}Nueva pregunta{% endif %}</h1>
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_preguntas' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if pregunta %}Editar pregunta{% else %}Nueva pregunta{% endif %}</h1>
+    </div>
 
     <form method="post" enctype="multipart/form-data" class="formulario">
         {% csrf_token %}
@@ -122,7 +126,7 @@
 
         <div class="acciones">
             <button type="submit" class="boton-principal">Guardar pregunta</button>
-            <a class="enlace-cancelar" href="{% url 'catalogo:lista_preguntas' %}">Cancelar</a>
+            <a class="boton-secundario" href="{% url 'catalogo:lista_preguntas' %}">Cancelar</a>
         </div>
     </form>
 </section>

@@ -10,7 +10,9 @@ from apps.usuarios.decoradores import roles_permitidos
 from apps.catalogo.models import Pregunta
 
 from .models import Grupo, Evaluacion, IntentoEvaluacion
-from .forms import EvaluacionForm, CategoriaEvaluacionFormSet
+from .forms import (
+    EvaluacionForm, CategoriaEvaluacionFormSet, GrupoForm, AsignacionDocenteFormSet,
+)
 
 
 @login_required
@@ -88,6 +90,53 @@ def lista_grupos(request):
         grupo.docentes = list(docentes.values())
 
     return render(request, 'evaluaciones/lista_grupos.html', {'grupos': grupos})
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def crear_grupo(request):
+    """Da de alta un grupo con sus alumnos y su plantilla docente."""
+    if request.method == 'POST':
+        formulario = GrupoForm(request.POST)
+        asignaciones = AsignacionDocenteFormSet(request.POST)
+
+        if formulario.is_valid() and asignaciones.is_valid():
+            grupo = formulario.save()
+            asignaciones.instance = grupo
+            asignaciones.save()
+
+            messages.success(request, 'El grupo se guardó correctamente.')
+            return redirect('evaluaciones:lista_grupos')
+    else:
+        formulario = GrupoForm()
+        asignaciones = AsignacionDocenteFormSet()
+
+    contexto = {'formulario': formulario, 'asignaciones': asignaciones}
+    return render(request, 'evaluaciones/formulario_grupo.html', contexto)
+
+
+@login_required
+@roles_permitidos(Persona.Rol.ADMINISTRADOR)
+def editar_grupo(request, grupo_id):
+    """Modifica un grupo que ya existe."""
+    grupo = get_object_or_404(Grupo, id=grupo_id)
+
+    if request.method == 'POST':
+        formulario = GrupoForm(request.POST, instance=grupo)
+        asignaciones = AsignacionDocenteFormSet(request.POST, instance=grupo)
+
+        if formulario.is_valid() and asignaciones.is_valid():
+            formulario.save()
+            asignaciones.save()
+
+            messages.success(request, 'El grupo se actualizó correctamente.')
+            return redirect('evaluaciones:lista_grupos')
+    else:
+        formulario = GrupoForm(instance=grupo)
+        asignaciones = AsignacionDocenteFormSet(instance=grupo)
+
+    contexto = {'formulario': formulario, 'asignaciones': asignaciones, 'grupo': grupo}
+    return render(request, 'evaluaciones/formulario_grupo.html', contexto)
 
 
 @login_required

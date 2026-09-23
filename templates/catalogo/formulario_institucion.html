@@ -1,0 +1,44 @@
+{% extends 'base.html' %}
+
+{% block titulo %}{% if institucion %}Editar institución{% else %}Nueva institución{% endif %} - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="titulo-con-volver">
+        {% url 'catalogo:lista_instituciones' as volver_url %}
+        {% include 'incluye/boton_volver.html' with url=volver_url %}
+        <h1>{% if institucion %}Editar institución{% else %}Nueva institución{% endif %}</h1>
+    </div>
+
+    <form method="post" class="formulario">
+        {% csrf_token %}
+
+        {% if formulario.non_field_errors %}
+        <div class="aviso-error">{{ formulario.non_field_errors }}</div>
+        {% endif %}
+
+        <div class="campo">
+            <label for="{{ formulario.nombre.id_for_label }}">{{ formulario.nombre.label }}</label>
+            {{ formulario.nombre }}
+            {{ formulario.nombre.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.direccion.id_for_label }}">{{ formulario.direccion.label }}</label>
+            {{ formulario.direccion }}
+            {{ formulario.direccion.errors }}
+        </div>
+
+        <div class="campo">
+            <label for="{{ formulario.telefono.id_for_label }}">{{ formulario.telefono.label }}</label>
+            {{ formulario.telefono }}
+            {{ formulario.telefono.errors }}
+        </div>
+
+        <div class="acciones">
+            <button type="submit" class="boton-principal">Guardar institución</button>
+            <a class="boton-secundario" href="{% url 'catalogo:lista_instituciones' %}">Cancelar</a>
+        </div>
+    </form>
+</section>
+{% endblock %}

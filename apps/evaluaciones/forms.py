@@ -1,11 +1,41 @@
 """Formularios para que el profesor programe una evaluacion a un grupo."""
 
 from django import forms
+from django.db.models import Q
 from django.forms import inlineformset_factory, BaseInlineFormSet
 
 from apps.catalogo.models import Materia, Categoria, Pregunta
+from apps.usuarios.models import Persona
 
 from .models import Grupo, Evaluacion, CategoriaEvaluacion, AsignacionDocente
+
+
+class SelectConDisciplina(forms.Select):
+    """Select de asignatura que marca a que disciplina pertenece cada opcion.
+
+    El JavaScript de la plantilla usa el atributo para mostrar solo las
+    opciones de la disciplina que se eligio arriba, sin pedirlas al servidor.
+    """
+
+    def create_option(self, name, value, label, selected, index, subindex=None, attrs=None):
+        opcion = super().create_option(name, value, label, selected, index, subindex, attrs)
+        if value:
+            opcion['attrs']['data-disciplina'] = value.instance.materia_id
+        return opcion
+
+
+class SelectMultipleSinVacios(forms.SelectMultiple):
+    """Igual que SelectMultiple, pero ignora los renglones sin elegir.
+
+    La tabla de alumnos manda un <select name="alumnos"> por renglon; el que
+    se quedo en "---------" manda cadena vacia, y sin filtrarla aqui esa ''
+    llega hasta el pk__in de la validacion (o revienta contra el id numerico
+    en alumnos_actuales, que hace su propio filtro).
+    """
+
+    def value_from_datadict(self, data, files, name):
+        valores = super().value_from_datadict(data, files, name)
+        return [valor for valor in valores if valor]
 
 
 class EntradaFechaHora(forms.DateTimeInput):
@@ -70,6 +100,9 @@ class CategoriaEvaluacionForm(forms.ModelForm):
     class Meta:
         model = CategoriaEvaluacion
         fields = ['categoria', 'numero_preguntas']
+        widgets = {
+            'categoria': SelectConDisciplina,
+        }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -176,6 +209,122 @@ CategoriaEvaluacionFormSet = inlineformset_factory(
     CategoriaEvaluacion,
     form=CategoriaEvaluacionForm,
     formset=BaseCategoriasFormSet,
+    extra=1,
+    can_delete=True,
+)
+
+
+class GrupoForm(forms.ModelForm):
+    """Alta y edicion de un grupo: sus alumnos los asigna el administrador.
+
+    Un alumno solo pertenece a un grupo a la vez, asi que el campo "alumnos"
+    se captura como una tabla (un renglon por alumno, igual que la plantilla
+    docente) en vez del selector multiple de toda la vida.
+    """
+
+    class Meta:
+        model = Grupo
+        fields = ['nombre', 'institucion', 'alumnos', 'activo']
+        widgets = {
+            'alumnos': SelectMultipleSinVacios,
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        # Solo se pueden elegir alumnos sin grupo, mas los que ya son de
+        # este (para no perderlos al editar).
+        sin_grupo = Q(grupos__isnull=True)
+        if self.instance.pk:
+            sin_grupo |= Q(grupos=self.instance.pk)
+        self.fields['alumnos'].queryset = (
+            Persona.objects.filter(rol=Persona.Rol.ALUMNO).filter(sin_grupo).distinct()
+        )
+        self.fields['alumnos'].help_text = (
+            'Solo aparecen los alumnos que no pertenecen a otro grupo.'
+        )
+
+    @property
+    def alumnos_actuales(self):
+        """Alumnos que debe traer marcados la tabla al pintar la pantalla.
+
+        Si el formulario viene de un POST invalido se repite lo que la
+        persona ya habia elegido, para no perder su trabajo; si no, son los
+        alumnos que el grupo ya tiene guardados (ninguno si es nuevo).
+        """
+        if self.is_bound:
+            # Se reutiliza el widget para leer los valores: ya sabe ignorar
+            # el renglon que se quedo en "---------" (manda cadena vacia, y
+            # sin filtrarla revienta el pk__in contra el id numerico).
+            campo = self.fields['alumnos']
+            valores = campo.widget.value_from_datadict(
+                self.data, self.files, self.add_prefix('alumnos')
+            )
+            return campo.queryset.filter(pk__in=valores)
+        if self.instance.pk:
+            return self.instance.alumnos.all()
+        return Persona.objects.none()
+
+    def clean(self):
+        datos = super().clean()
+        alumnos = datos.get('alumnos')
+        if alumnos is None:
+            return datos
+
+        # La tabla no impide elegir al mismo alumno en dos renglones: el
+        # campo llega deduplicado (es un ModelMultipleChoiceField), asi que
+        # se compara contra lo que mando cada renglon.
+        campo = self.fields['alumnos']
+        valores = campo.widget.value_from_datadict(
+            self.data, self.files, self.add_prefix('alumnos')
+        )
+        if len(valores) != len(set(valores)):
+            self.add_error(None, 'No puedes agregar al mismo alumno más de una vez.')
+
+        # El queryset del campo ya descarta a quien estaba en otro grupo
+        # cuando se abrio el formulario, pero se revisa otra vez contra la
+        # base de datos por si alguien mas lo asigno mientras tanto. Se
+        # revisa persona por persona -y no con un solo filter()- porque
+        # combinar "tiene grupo" con "no es este grupo" sobre la misma
+        # relacion de muchos a muchos en un filter() no hace lo que parece:
+        # Django no reutiliza el join con la negacion y el resultado sale
+        # mal (documentado en "Spanning multi-valued relationships").
+        frescos = Persona.objects.filter(pk__in=[persona.pk for persona in alumnos])
+        en_otro_grupo = []
+        for persona in frescos:
+            otros_grupos = persona.grupos.all()
+            if self.instance.pk:
+                otros_grupos = otros_grupos.exclude(pk=self.instance.pk)
+            if otros_grupos.exists():
+                en_otro_grupo.append(persona)
+        if en_otro_grupo:
+            nombres = ', '.join(persona.nombre_completo for persona in en_otro_grupo)
+            self.add_error(None, f'Ya pertenecen a otro grupo: {nombres}.')
+
+        return datos
+
+
+class AsignacionDocenteForm(forms.ModelForm):
+    """Un renglon de la tabla: que asignatura imparte un profesor en el grupo."""
+
+    class Meta:
+        model = AsignacionDocente
+        fields = ['profesor', 'categoria']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['profesor'].queryset = Persona.objects.filter(rol=Persona.Rol.PROFESOR)
+        self.fields['categoria'].queryset = (
+            Categoria.objects.filter(activa=True).select_related('materia')
+        )
+
+
+# Tabla de asignaciones docentes (profesor + asignatura) que se captura junto
+# con el grupo. El related_name "asignaciones" del modelo AsignacionDocente
+# ya arma el prefijo de los campos, igual que categorias_elegidas arriba.
+AsignacionDocenteFormSet = inlineformset_factory(
+    Grupo,
+    AsignacionDocente,
+    form=AsignacionDocenteForm,
     extra=1,
     can_delete=True,
 )
