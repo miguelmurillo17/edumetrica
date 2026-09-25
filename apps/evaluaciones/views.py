@@ -77,6 +77,15 @@ def lista_grupos(request):
     if request.user.es_profesor:
         grupos = grupos.filter(profesores=request.user).distinct()
 
+    # Filtro por estado; un valor inventado en la URL se ignora.
+    estado = request.GET.get('estado', '')
+    if estado == 'activo':
+        grupos = grupos.filter(activo=True)
+    elif estado == 'inactivo':
+        grupos = grupos.filter(activo=False)
+    else:
+        estado = ''
+
     # Se agrupan las asignaciones por profesor para mostrar "Fulano - Asig1, Asig2".
     grupos = list(grupos)
     for grupo in grupos:
@@ -89,7 +98,12 @@ def lista_grupos(request):
             ficha['asignaturas'].append(asignacion.categoria.nombre)
         grupo.docentes = list(docentes.values())
 
-    return render(request, 'evaluaciones/lista_grupos.html', {'grupos': grupos})
+    contexto = {
+        'grupos': grupos,
+        'estado': estado,
+        'hay_filtros': bool(estado),
+    }
+    return render(request, 'evaluaciones/lista_grupos.html', contexto)
 
 
 @login_required

@@ -259,7 +259,18 @@ class Pregunta(models.Model):
         null=True,
         related_name='preguntas_creadas',
     )
+    # Ultima persona que la edito, valido o descarto. Nulo si nadie la ha tocado
+    # desde que se dio de alta.
+    modificada_por = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='preguntas_modificadas',
+    )
     fecha_creacion = models.DateTimeField(auto_now_add=True)
+    # Se actualiza sola en cada guardado, junto con modificada_por.
+    fecha_modificacion = models.DateTimeField(auto_now=True)
     activa = models.BooleanField(default=True)
 
     # De donde salio la pregunta. Sirve para separar las metricas de la tesis.
@@ -278,6 +289,9 @@ class Pregunta(models.Model):
     )
     # Explicacion paso a paso que se le muestra al alumno al terminar.
     procedimiento = models.TextField(blank=True)
+    # Operacion de la que sale la respuesta correcta, la que el verificador
+    # simbolico comprobo. Vacia en las preguntas capturadas a mano.
+    expresion = models.CharField('expresión', max_length=300, blank=True)
     # Dictamen del verificador simbolico. Queda en nulo cuando la pregunta no
     # es de matematicas y por lo tanto no habia nada que comprobar.
     verificada_simbolicamente = models.BooleanField(null=True, blank=True)

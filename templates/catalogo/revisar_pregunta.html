@@ -10,44 +10,6 @@
         <h1>Revisar la pregunta generada</h1>
     </div>
 
-    {% if es_mia %}
-    <p class="ayuda">
-        Tú pediste esta pregunta, así que eres quien responde por ella: no
-        entrará a ninguna evaluación hasta que la valides. Si tienes dudas,
-        otro profesor o el administrador pueden revisarla contigo.
-    </p>
-    {% else %}
-    <p class="ayuda">
-        Esta pregunta la generó {{ pregunta.creada_por.nombre_completo }}, que
-        es quien responde por ella. Puedes ayudarle a revisarla.
-    </p>
-    {% endif %}
-
-    <div class="dictamen {% if pregunta.verificada_simbolicamente %}dictamen-aprobada{% elif pregunta.verificada_simbolicamente == False %}dictamen-rechazada{% else %}dictamen-sin-verificar{% endif %}">
-        {% if pregunta.verificada_simbolicamente %}
-        <h2>La comprobación matemática la aprobó</h2>
-        <p>
-            El sistema confirmó que la respuesta marcada es la que se obtiene
-            de la operación, y que ningún distractor equivale a ella. Falta
-            que revises el enunciado, que eso no se puede comprobar solo.
-        </p>
-        {% elif pregunta.verificada_simbolicamente == False %}
-        <h2>La comprobación matemática la rechazó</h2>
-        <p class="motivo-rechazo">{{ pregunta.motivo_rechazo }}</p>
-        <p>
-            Quedó descartada. Puedes corregirla y validarla de todos modos: hay
-            rechazos que son de formato y no errores de matemáticas, como las
-            unidades o la coma decimal.
-        </p>
-        {% else %}
-        <h2>Sin comprobación matemática</h2>
-        <p>
-            Esta pregunta no trae una operación que se pueda comprobar, así que
-            la revisión es únicamente tuya.
-        </p>
-        {% endif %}
-    </div>
-
     <p class="datos-evaluacion">
         {{ pregunta.materia.nombre }} · {{ pregunta.categoria.nombre }} ·
         Nivel {{ pregunta.nivel.numero }} ({{ pregunta.nivel.nombre }}) ·
@@ -55,13 +17,13 @@
     </p>
 
     <h2>Enunciado</h2>
-    <p class="enunciado-quiz">{{ pregunta.enunciado }}</p>
+    <p class="enunciado-quiz enunciado-revision">{{ pregunta.enunciado }}</p>
     {% if pregunta.imagen %}
     <img class="img-pregunta" src="{{ pregunta.imagen.url }}" alt="Imagen de la pregunta">
     {% endif %}
 
     <h2>Opciones</h2>
-    <ul class="detalle-resultado">
+    <ul class="detalle-resultado opciones-revision">
         {% for opcion in opciones %}
         <li class="{% if opcion.es_correcta %}acierto{% endif %}">
             <span class="marca-resultado">{% if opcion.es_correcta %}Correcta{% else %}Distractor{% endif %}</span>
@@ -80,6 +42,37 @@
     </p>
     {% endif %}
 
+    <div class="dictamen {% if pregunta.verificada_simbolicamente %}dictamen-aprobada{% elif pregunta.verificada_simbolicamente == False %}dictamen-rechazada{% else %}dictamen-sin-verificar{% endif %}">
+        {% if pregunta.verificada_simbolicamente %}
+        <h2>La comprobación matemática la aprobó</h2>
+        <p>
+            El sistema confirmó que la respuesta marcada es la que se obtiene
+            de la operación, y que ningún distractor equivale a ella. Falta
+            que revises el enunciado, que eso no se puede comprobar solo.
+        </p>
+        {% if pregunta.expresion %}
+        <p>Operación comprobada: <code>{{ pregunta.expresion }}</code></p>
+        {% endif %}
+        {% elif pregunta.verificada_simbolicamente == False %}
+        <h2>La comprobación matemática la rechazó</h2>
+        <p class="motivo-rechazo">{{ pregunta.motivo_rechazo }}</p>
+        <p>
+            Quedó descartada. Puedes corregirla y validarla de todos modos: hay
+            rechazos que son de formato y no errores de matemáticas, como las
+            unidades o la coma decimal.
+        </p>
+        {% if pregunta.expresion %}
+        <p>Operación comprobada: <code>{{ pregunta.expresion }}</code></p>
+        {% endif %}
+        {% else %}
+        <h2>Sin comprobación matemática</h2>
+        <p>
+            Esta pregunta no trae una operación que se pueda comprobar, así que
+            la revisión es únicamente tuya.
+        </p>
+        {% endif %}
+    </div>
+
     <div class="acciones">
         <form method="post" action="{% url 'catalogo:resolver_pregunta' pregunta.id %}">
             {% csrf_token %}
@@ -96,5 +89,9 @@
         </form>
         <a class="boton-secundario" href="{% url 'catalogo:lista_preguntas' %}">Dejarla para después</a>
     </div>
+    <p class="ayuda">
+        Pregunta generada por Inteligencia Artificial, no entrará a ninguna
+        evaluación hasta que la hayas validado.
+    </p>
 </section>
 {% endblock %}

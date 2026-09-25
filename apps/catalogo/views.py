@@ -65,7 +65,10 @@ def lista_preguntas(request):
     """
     preguntas = (
         Pregunta.objects
-        .select_related('materia', 'categoria', 'nivel')
+        .select_related(
+            'materia', 'categoria', 'nivel',
+            'creada_por', 'modificada_por', 'solicitud',
+        )
         .all()
     )
 
@@ -282,7 +285,8 @@ def resolver_pregunta(request, pregunta_id):
         messages.error(request, 'No se reconoció la acción solicitada.')
         return redirect('catalogo:revisar_pregunta', pregunta_id=pregunta.id)
 
-    pregunta.save(update_fields=['estado'])
+    pregunta.modificada_por = request.user
+    pregunta.save(update_fields=['estado', 'modificada_por', 'fecha_modificacion'])
     messages.success(request, aviso)
     return redirect('catalogo:lista_preguntas')
 
@@ -340,6 +344,7 @@ def editar_pregunta(request, pregunta_id):
             pregunta.materia = pregunta.categoria.materia
             # El procedimiento se rehace con los pasos capturados, numerado.
             pregunta.procedimiento = pasos_a_texto(request.POST.getlist('paso'))
+            pregunta.modificada_por = request.user
             pregunta.save()
             opciones.save()
 

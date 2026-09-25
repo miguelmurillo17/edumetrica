@@ -73,7 +73,11 @@ def _leer_pregunta(cruda, posicion, exige_expresion=False):
     else:
         valores = []
 
-    procedimiento = _texto(cruda.get('procedimiento'))
+    procedimiento = cruda.get('procedimiento')
+    if isinstance(procedimiento, list):
+        # Un paso por elemento; se unen en un renglon cada uno.
+        procedimiento = '\n'.join(_texto(paso) for paso in procedimiento if _texto(paso))
+    procedimiento = _texto(procedimiento)
     if not procedimiento:
         # Sin procedimiento la pregunta no sirve para retroalimentar al alumno,
         # que es la mitad del proposito de generarla.

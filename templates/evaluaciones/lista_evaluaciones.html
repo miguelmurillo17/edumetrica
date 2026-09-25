@@ -19,6 +19,7 @@
     <table class="tabla" id="tabla-evaluaciones">
         <thead>
             <tr>
+                <th class="columna-icono"></th>
                 <th>Título</th>
                 <th>Grupo</th>
                 <th>Disciplina</th>
@@ -30,7 +31,11 @@
         <tbody>
             {% for evaluacion in evaluaciones %}
             <tr>
-                <td><a href="{% url 'evaluaciones:detalle_evaluacion' evaluacion.id %}">{{ evaluacion.titulo }}</a></td>
+                <td>
+                    {% url 'evaluaciones:detalle_evaluacion' evaluacion.id as url_detalle %}
+                    {% include 'incluye/boton_editar.html' with url=url_detalle %}
+                </td>
+                <td>{{ evaluacion.titulo }}</td>
                 <td>{{ evaluacion.grupo.nombre }}</td>
                 <td>{{ evaluacion.materia.nombre }}</td>
                 <td>{{ evaluacion.numero_preguntas }}</td>

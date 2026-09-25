@@ -688,6 +688,18 @@ li.error .marca-resultado {
     color: var(--color-error);
 }
 
+.opciones-revision li {
+    display: flex;
+    align-items: baseline;
+    gap: 1.2rem;
+}
+
+.opciones-revision .marca-resultado {
+    flex: 0 0 6.5rem;
+    padding-right: 1.2rem;
+    border-right: 1px solid var(--color-borde);
+}
+
 .detalle-enunciado {
     font-weight: 600;
     margin: 0.3rem 0;
@@ -947,7 +959,8 @@ li.error .marca-resultado {
     font-weight: 600;
 }
 
-.procedimiento {
+.procedimiento,
+.enunciado-revision {
     background-color: white;
     border: 1px solid var(--color-borde);
     border-radius: var(--radio);
@@ -955,10 +968,41 @@ li.error .marca-resultado {
     line-height: 1.5;
 }
 
+.enunciado-revision {
+    font-weight: 400;
+    font-size: 1.1rem;
+}
+
 /* Pantalla de espera de la generacion */
 .espera-tiempo {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
     color: #6c7a74;
     font-size: 0.9rem;
+}
+
+/* Anillo que gira junto al contador, para que se note que se esta esperando */
+.indicador-espera {
+    flex: none;
+    width: 1.4rem;
+    height: 1.4rem;
+    border: 3px solid #dfe8e3;
+    border-top-color: var(--color-principal);
+    border-radius: 50%;
+    animation: girar 0.9s linear infinite;
+}
+
+@keyframes girar {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .indicador-espera {
+        animation-duration: 3s;
+    }
 }
 
 /* Captura del procedimiento paso a paso
@@ -1152,6 +1196,13 @@ mark.resaltado {
     width: 90%;
     max-width: 32rem;
     box-shadow: 0 10px 40px rgba(0, 0, 0, 0.25);
+    text-align: left;
+}
+
+.cerrar-dialogo {
+    position: absolute;
+    top: 0.6rem;
+    right: 0.6rem;
 }
 
 .dialogo::backdrop {
@@ -1219,4 +1270,30 @@ mark.resaltado {
         flex-wrap: wrap;
         row-gap: 0.5rem;
     }
+}
+
+/* Datos de auditoria de una pregunta dentro del dialogo */
+.datos-auditoria {
+    display: grid;
+    grid-template-columns: max-content 1fr;
+    gap: 0.5rem 1.2rem;
+    margin: 0 0 1rem;
+}
+
+.datos-auditoria dt {
+    color: #5a6661;
+    font-size: 0.9rem;
+}
+
+.datos-auditoria dd {
+    margin: 0;
+}
+
+/* Icono discreto: gris hasta que se le acerca el cursor */
+.boton-sutil {
+    color: #9aa5a0;
+}
+
+.boton-sutil:hover {
+    color: var(--color-principal);
 }

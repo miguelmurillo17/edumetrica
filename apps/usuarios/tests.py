@@ -18,12 +18,21 @@ from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
 from django.core.exceptions import ValidationError
 from django.contrib.auth.password_validation import validate_password
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
 from .models import Persona
+
+# Las reglas de contrasena se apagan en desarrollo (ver settings.py); las
+# pruebas que las comprueban las fijan aqui para no depender de DEBUG.
+REGLAS_CONTRASENA = [
+    {'NAME': 'apps.usuarios.validadores.SimilitudConDatosPersonales'},
+    {'NAME': 'apps.usuarios.validadores.LargoMinimo'},
+    {'NAME': 'apps.usuarios.validadores.ContrasenaComun'},
+    {'NAME': 'apps.usuarios.validadores.SoloNumeros'},
+]
 
 
 CLAVE = 'Edumetrica2026'
@@ -352,6 +361,7 @@ class RestablecerContrasenaTest(TestCase):
 
         self.assertContains(respuesta, 'Enlace vencido')
 
+    @override_settings(AUTH_PASSWORD_VALIDATORS=REGLAS_CONTRASENA)
     def test_una_contrasena_nueva_invalida_se_rechaza(self):
         self.pedir()
 
@@ -370,6 +380,7 @@ class RestablecerContrasenaTest(TestCase):
         ))
 
 
+@override_settings(AUTH_PASSWORD_VALIDATORS=REGLAS_CONTRASENA)
 class ValidadoresTest(TestCase):
     """Los mensajes de las reglas de contrasena, que tutean a la persona."""
 

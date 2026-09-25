@@ -23,6 +23,7 @@ from apps.ia.proveedores import obtener_proveedor
 from apps.ia.servicios import generar_preguntas
 
 from .models import OpcionRespuesta, Pregunta, SolicitudGeneracion
+from .procedimientos import pasos_a_texto, texto_a_pasos
 from .verificador import verificar
 
 registro = logging.getLogger(__name__)
@@ -88,7 +89,9 @@ def _guardar_pregunta(generada, dictamen, solicitud, profesor):
         categoria=solicitud.categoria,
         nivel=solicitud.nivel,
         enunciado=generada.enunciado,
-        procedimiento=generada.procedimiento,
+        # Numerado y un paso por linea, igual que el capturado a mano.
+        procedimiento=pasos_a_texto(texto_a_pasos(generada.procedimiento)),
+        expresion=generada.expresion,
         creada_por=profesor,
         origen=Pregunta.Origen.IA,
         # Aunque el verificador la apruebe, la revisa una persona antes de que

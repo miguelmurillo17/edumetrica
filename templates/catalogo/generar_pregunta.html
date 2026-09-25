@@ -14,7 +14,8 @@
         su aritmética y tú decides si entra al banco. Se genera una a la vez.
     </p>
 
-    <form method="post" class="formulario">
+    <form method="post" class="formulario"
+          data-confirmar="¿Generar la pregunta? Cuenta para tu límite de generaciones por hora, aunque el proveedor falle.">
         {% csrf_token %}
 
         <div class="campo">

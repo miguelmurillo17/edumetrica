@@ -22,7 +22,10 @@
         llegar al minuto. No cierres esta página: se actualiza sola en cuanto
         termine.
     </p>
-    <p class="espera-tiempo">Llevas <span id="segundos">0</span> segundos esperando.</p>
+    <p class="espera-tiempo">
+        <span class="indicador-espera" aria-hidden="true"></span>
+        Llevas <span id="segundos">0</span> segundos esperando.
+    </p>
 
     {% else %}
     <div class="titulo-con-volver">

@@ -27,7 +27,7 @@
 
     {% if evaluacion.estado != 'finalizada' %}
     <form method="post" action="{% url 'evaluaciones:finalizar_evaluacion' evaluacion.id %}"
-          onsubmit="return confirm('Aun no termina el tiempo programado. Deseas finalizar la evaluacion para todo el grupo?');">
+          data-confirmar="Aún no termina el tiempo programado. ¿Deseas finalizar la evaluación para todo el grupo?">
         {% csrf_token %}
         <button type="submit" class="boton-principal boton-compacto">Finalizar evaluación</button>
     </form>

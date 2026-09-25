@@ -123,6 +123,11 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# En desarrollo se acepta cualquier contrasena, para no estorbar al crear
+# usuarios de prueba. En produccion (DEBUG apagado) rigen todas las reglas.
+if DEBUG:
+    AUTH_PASSWORD_VALIDATORS = []
+
 
 # Modelo de usuario propio. El sistema usa la tabla Persona en lugar de la
 # que trae Django por defecto.

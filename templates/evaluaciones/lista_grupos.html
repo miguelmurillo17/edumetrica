@@ -15,6 +15,24 @@
         {% endif %}
     </div>
 
+    <form method="get" class="filtros">
+        <div class="campo-filtro">
+            <label for="filtro-estado">Estado</label>
+            <select name="estado" id="filtro-estado">
+                <option value="">Todos</option>
+                <option value="activo" {% if estado == 'activo' %}selected{% endif %}>Activo</option>
+                <option value="inactivo" {% if estado == 'inactivo' %}selected{% endif %}>Inactivo</option>
+            </select>
+        </div>
+
+        <div class="campo-filtro acciones-filtro">
+            <button type="submit" class="boton-principal boton-compacto">Filtrar</button>
+            {% if hay_filtros %}
+            <a class="boton-secundario boton-compacto" href="{% url 'evaluaciones:lista_grupos' %}">Limpiar</a>
+            {% endif %}
+        </div>
+    </form>
+
     {% if grupos %}
     {% include 'incluye/buscador_tabla.html' with tabla_id='lista-grupos' renglon='.grupo' mensaje_vacio='Ningún grupo coincide con la búsqueda.' %}
     {% endif %}
@@ -78,7 +96,11 @@
         {% endif %}
     </div>
     {% empty %}
+    {% if hay_filtros %}
+    <p>No hay grupos que cumplan el filtro elegido.</p>
+    {% else %}
     <p>Todavía no tienes grupos asignados. El administrador es quien los asigna.</p>
+    {% endif %}
     {% endfor %}
     </div>
 </section>

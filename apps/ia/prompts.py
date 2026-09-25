@@ -21,7 +21,7 @@ Esquema exacto:
       "opciones": ["string", "string", "string", "string"],
       "valores": ["string", "string", "string", "string"],
       "indice_correcto": 0,
-      "procedimiento": "string"
+      "procedimiento": ["string", "string"]
     }
   ]
 }
@@ -35,8 +35,10 @@ Reglas del contenido:
   distractores entre sí. Cuidado con las formas equivalentes: 1/2 y 0.5 son el
   mismo número, igual que 2*x y x+x.
 - No uses "todas las anteriores" ni "ninguna de las anteriores".
-- "procedimiento" explica paso a paso cómo se llega al resultado, tuteando al
-  alumno, en 2 a 4 pasos. No es una justificación: es el camino para resolverlo.
+- "procedimiento" es una lista de cadenas, una por paso, de 2 a 4 pasos, que
+  explican cómo se llega al resultado tuteando al alumno. Cada paso es una
+  sola acción corta y va en su propia cadena, sin numerarlo: la numeración la
+  pone el sistema. No es una justificación: es el camino para resolverlo.
 - El enunciado, las opciones y el procedimiento se muestran tal cual en una
   página web: escríbelos en texto plano legible, NUNCA en LaTeX ni con barras
   invertidas. Escribe "log base 2 de x", no "\\log_2(x)"; escribe "x elevado al

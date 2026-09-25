@@ -59,7 +59,17 @@ class PreguntaAdmin(admin.ModelAdmin):
     list_display = ('enunciado', 'materia', 'categoria', 'nivel', 'estado', 'origen', 'activa')
     list_filter = ('estado', 'origen', 'materia', 'categoria', 'nivel', 'activa')
     search_fields = ('enunciado',)
+    readonly_fields = ('creada_por', 'modificada_por', 'fecha_modificacion')
     inlines = [OpcionRespuestaInline]
+
+    def save_model(self, request, obj, form, change):
+        # Quien la da de alta queda como autor; quien la toca despues, como
+        # ultimo en modificarla.
+        if not change and not obj.creada_por_id:
+            obj.creada_por = request.user
+        if change:
+            obj.modificada_por = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(SolicitudGeneracion)
