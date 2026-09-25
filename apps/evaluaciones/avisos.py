@@ -73,7 +73,8 @@ def avisar_resultado_disponible(evaluacion, alumnos):
         'Ya puedes ver tu resultado',
         f'La evaluación {evaluacion.titulo} terminó. Revisa tu calificación y '
         f'el procedimiento de las preguntas que fallaste.',
-        reverse('evaluaciones:panel_alumno'),
+        # Lleva directo al resultado, que es lo que el alumno viene a leer.
+        reverse('evaluaciones:presentar_evaluacion', args=[evaluacion.id]),
     )
 
 

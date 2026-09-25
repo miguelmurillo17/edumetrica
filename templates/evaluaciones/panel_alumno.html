@@ -29,6 +29,7 @@
             {% elif fila.situacion == 'finalizada' %}
             <span class="estado estado-finalizada">Finalizada</span>
             <p class="calificacion-mini">Calificación: {{ fila.intento.calificacion }}</p>
+            <a class="boton-secundario boton-compacto" href="{% url 'evaluaciones:presentar_evaluacion' fila.evaluacion.id %}">Ver resultado</a>
 
             {% elif fila.situacion == 'proxima' %}
             <span class="estado estado-programada">Programada</span>

@@ -18,13 +18,21 @@
     <div v-else-if="estado === 'presentando'">
         <header class="quiz-encabezado">
             <h1>[[ titulo ]]</h1>
-            <p>Pregunta [[ indice + 1 ]] de [[ preguntas.length ]]</p>
+            <p>
+                Pregunta [[ indice + 1 ]] de [[ preguntas.length ]] ·
+                Respondidas [[ respondidas ]] de [[ preguntas.length ]]
+                <span v-if="horaCierre"> · Tienes hasta las [[ horaCierre ]]</span>
+            </p>
+            <!-- La barra mide lo respondido, no por donde va navegando: si
+                 midiera el indice, saltarse preguntas la llenaria sin que el
+                 alumno hubiera contestado nada. -->
             <div class="barra-progreso">
                 <div class="barra-avance" :style="{ width: progreso + '%' }"></div>
             </div>
         </header>
 
         <div class="quiz-pregunta">
+            <p v-if="estaRespondida" class="marca-respondida">Respondida</p>
             <p class="enunciado-quiz">[[ preguntaActual.enunciado ]]</p>
             <img v-if="preguntaActual.imagen" :src="preguntaActual.imagen" class="img-pregunta">
 
@@ -39,12 +47,25 @@
                     <span v-if="opcion.texto">[[ opcion.texto ]]</span>
                 </button>
             </div>
+
+            <!-- Cada respuesta se graba en cuanto se elige. Si la red falla no
+                 se tumba el examen: se avisa aqui y se puede reintentar. -->
+            <p v-if="guardadoActual === 'guardando'" class="aviso-guardado">Guardando tu respuesta...</p>
+            <p v-else-if="guardadoActual === 'guardado'" class="aviso-guardado guardado">Respuesta guardada</p>
+            <p v-else-if="guardadoActual === 'error'" class="aviso-guardado sin-guardar">
+                No se pudo guardar tu respuesta.
+                <button type="button" class="boton-secundario boton-compacto" @click="reintentar">Reintentar</button>
+            </p>
         </div>
 
         <div class="quiz-navegacion">
             <button class="boton-secundario" :disabled="indice === 0" @click="anterior">Anterior</button>
             <button v-if="!esUltima" class="boton-principal boton-compacto" @click="siguiente">Siguiente</button>
-            <button v-else class="boton-principal boton-compacto" :disabled="enviando" @click="finalizar">
+            <button
+                v-if="esUltima || todasRespondidas"
+                class="boton-principal boton-compacto"
+                :disabled="enviando"
+                @click="finalizar">
                 [[ enviando ? 'Enviando...' : 'Finalizar' ]]
             </button>
         </div>
@@ -126,6 +147,10 @@
                 indice: 0,
                 intentoId: null,
                 respuestas: {},
+                // Como va el guardado de cada respuesta, por pregunta:
+                // 'guardando', 'guardado' o 'error'.
+                guardado: {},
+                horaCierre: '',
                 enviando: false,
                 resultado: null,
                 intervaloSondeo: null,
@@ -141,11 +166,23 @@
             esUltima() {
                 return this.indice === this.preguntas.length - 1;
             },
+            respondidas() {
+                return Object.keys(this.respuestas).length;
+            },
+            todasRespondidas() {
+                return this.preguntas.length > 0 && this.respondidas === this.preguntas.length;
+            },
+            estaRespondida() {
+                return this.preguntaActual && this.respuestas[this.preguntaActual.id] !== undefined;
+            },
+            guardadoActual() {
+                return this.preguntaActual ? this.guardado[this.preguntaActual.id] : '';
+            },
             progreso() {
                 if (this.preguntas.length === 0) {
                     return 0;
                 }
-                return Math.round(((this.indice + 1) / this.preguntas.length) * 100);
+                return Math.round((this.respondidas / this.preguntas.length) * 100);
             },
         },
         methods: {
@@ -154,19 +191,51 @@
                     const datos = await peticion(`/api/alumno/evaluaciones/${EVALUACION_ID}/iniciar/`);
                     this.intentoId = datos.intento_id;
                     this.titulo = datos.titulo;
+
+                    // Quien ya presento vuelve a leer su resultado: no hay
+                    // examen que montar ni sondeo que arrancar.
+                    if (datos.finalizado) {
+                        this.resultado = datos.resultado;
+                        this.estado = 'resultado';
+                        return;
+                    }
+
                     this.preguntas = datos.preguntas;
                     this.respuestas = datos.respuestas_previas || {};
+                    // Se reanuda donde se quedo, no en la primera de todas.
+                    this.indice = datos.indice_inicial || 0;
+                    this.calcularHoraCierre(datos.segundos_restantes);
                     this.estado = 'presentando';
-                    // Se empieza a vigilar si el profesor finaliza la evaluacion.
+                    // Se empieza a vigilar si la evaluacion se cierra.
                     this.intervaloSondeo = setInterval(this.revisarEstado, MILISEGUNDOS_SONDEO);
                 } catch (error) {
                     this.mensajeError = error.message;
                     this.estado = 'error';
                 }
             },
+            calcularHoraCierre(segundos) {
+                // La hora se arma con los segundos que dice el servidor, no
+                // con la que marque el reloj del alumno.
+                if (!segundos) {
+                    return;
+                }
+                const cierre = new Date(Date.now() + segundos * 1000);
+                this.horaCierre = cierre.toLocaleTimeString('es-MX', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                });
+            },
             async seleccionar(opcionId) {
                 const preguntaId = this.preguntaActual.id;
                 this.respuestas[preguntaId] = opcionId;
+                await this.guardar(preguntaId, opcionId);
+            },
+            async reintentar() {
+                const preguntaId = this.preguntaActual.id;
+                await this.guardar(preguntaId, this.respuestas[preguntaId]);
+            },
+            async guardar(preguntaId, opcionId) {
+                this.guardado[preguntaId] = 'guardando';
                 try {
                     const datos = await peticion(`/api/alumno/intentos/${this.intentoId}/responder/`, {
                         pregunta: preguntaId,
@@ -177,10 +246,14 @@
                     if (datos.finalizada) {
                         this.motivoCierre = datos.motivo || 'tiempo';
                         await this.mostrarResultado();
+                        return;
                     }
+                    this.guardado[preguntaId] = 'guardado';
                 } catch (error) {
-                    this.mensajeError = error.message;
-                    this.estado = 'error';
+                    // Un corte de red no puede costarle el examen al alumno:
+                    // se avisa junto a la pregunta y se puede reintentar, en
+                    // lugar de mandarlo a la pantalla de error.
+                    this.guardado[preguntaId] = 'error';
                 }
             },
             siguiente() {
@@ -216,10 +289,12 @@
                 }
             },
             async finalizar() {
-                const respondidas = Object.keys(this.respuestas).length;
-                if (respondidas < this.preguntas.length) {
-                    const seguir = confirm('Tienes preguntas sin responder. Deseas finalizar de todos modos?');
-                    if (!seguir) {
+                const faltan = this.preguntas.length - this.respondidas;
+                if (faltan > 0) {
+                    const aviso = faltan === 1
+                        ? 'Te queda 1 pregunta sin responder. ¿Deseas finalizar de todos modos?'
+                        : `Te quedan ${faltan} preguntas sin responder. ¿Deseas finalizar de todos modos?`;
+                    if (!confirm(aviso)) {
                         return;
                     }
                 }

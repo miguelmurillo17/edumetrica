@@ -1440,3 +1440,34 @@ mark.resaltado {
     color: #6b7a75;
     white-space: nowrap;
 }
+
+/* Pantalla del alumno: senales de que una pregunta ya quedo contestada y de
+   que su respuesta llego al servidor. */
+.marca-respondida {
+    display: inline-block;
+    margin: 0 0 0.6rem;
+    font-size: 0.8rem;
+    font-weight: bold;
+    color: var(--color-principal);
+    background-color: #e8f2ec;
+    border-radius: var(--radio);
+    padding: 0.2rem 0.6rem;
+}
+
+.aviso-guardado {
+    margin: 1rem 0 0;
+    font-size: 0.85rem;
+    color: #6b7a75;
+}
+
+.aviso-guardado.guardado {
+    color: var(--color-principal);
+}
+
+.aviso-guardado.sin-guardar {
+    color: var(--color-error);
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+}

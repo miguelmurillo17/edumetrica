@@ -1206,3 +1206,108 @@ class AvisosTest(BaseEvaluacionesTest):
         entregar_intento(intento)
 
         self.assertFalse(self.avisos_de(self.profesor).exists())
+
+
+class ReanudarEvaluacionTest(BaseEvaluacionesTest):
+    """Lo que entrega el servidor cuando el alumno abre la evaluacion.
+
+    Son las dos cosas que necesita su pantalla para no hacerle perder el hilo:
+    en que pregunta retomar si vuelve tras un corte, y cuanto plazo le queda.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.preguntas = [self.crear_pregunta() for _ in range(4)]
+        self.evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+        self.client.force_login(self.alumno)
+
+    def iniciar(self):
+        respuesta = self.client.post(
+            reverse('evaluaciones:api_iniciar', args=[self.evaluacion.id])
+        )
+        return respuesta.json()
+
+    def responder_las_primeras(self, cuantas):
+        """Contesta las primeras preguntas en el orden en que las entrega."""
+        datos = self.iniciar()
+        intento = IntentoEvaluacion.objects.get(id=datos['intento_id'])
+        for ficha in datos['preguntas'][:cuantas]:
+            self.responder(
+                intento, Pregunta.objects.get(id=ficha['id']), True
+            )
+        return intento
+
+    def test_sin_respuestas_previas_abre_en_la_primera(self):
+        self.assertEqual(self.iniciar()['indice_inicial'], 0)
+
+    def test_reanuda_en_la_primera_sin_responder(self):
+        # El alumno que vuelve tras un corte no tiene que pasar otra vez por
+        # todas las que ya contesto.
+        self.responder_las_primeras(2)
+
+        self.assertEqual(self.iniciar()['indice_inicial'], 2)
+
+    def test_con_todas_respondidas_abre_en_la_primera(self):
+        # No queda ninguna pendiente, asi que se abre al principio para que
+        # pueda repasar antes de entregar.
+        self.responder_las_primeras(4)
+
+        self.assertEqual(self.iniciar()['indice_inicial'], 0)
+
+    def test_entrega_los_segundos_que_le_quedan_de_plazo(self):
+        # La evaluacion de la prueba termina dentro de una hora.
+        segundos = self.iniciar()['segundos_restantes']
+
+        self.assertGreater(segundos, 3500)
+        self.assertLessEqual(segundos, 3600)
+
+    def test_quien_ya_presento_recibe_su_resultado(self):
+        intento = IntentoEvaluacion.objects.create(
+            evaluacion=self.evaluacion, alumno=self.alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=25,
+        )
+        self.responder(intento, self.preguntas[0], True)
+
+        datos = self.iniciar()
+
+        self.assertTrue(datos['finalizado'])
+        self.assertEqual(datos['resultado']['total'], 4)
+        self.assertEqual(datos['resultado']['aciertos'], 1)
+        # No se le vuelve a montar el examen.
+        self.assertNotIn('preguntas', datos)
+
+    def test_puede_volver_por_su_resultado_con_la_evaluacion_cerrada(self):
+        # Es el caso normal: se vuelve a leer la retroalimentacion cuando la
+        # evaluacion ya termino, que es justo cuando el plazo diria que no.
+        IntentoEvaluacion.objects.create(
+            evaluacion=self.evaluacion, alumno=self.alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=50,
+        )
+        cerrar_evaluacion(self.evaluacion, anticipada=True)
+
+        datos = self.iniciar()
+
+        self.assertTrue(datos['finalizado'])
+
+    def test_al_volver_no_se_le_dice_que_se_acabo_el_tiempo(self):
+        # El aviso explica una interrupcion, y a quien entra por su cuenta a
+        # leer su resultado no lo interrumpio nadie.
+        IntentoEvaluacion.objects.create(
+            evaluacion=self.evaluacion, alumno=self.alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=50,
+        )
+        cerrar_evaluacion(self.evaluacion, anticipada=True)
+
+        self.assertNotIn('motivo', self.iniciar())
+
+    def test_el_procedimiento_sigue_sin_viajar_durante_el_examen(self):
+        # Se repite aqui la regla de siempre porque esta pantalla ahora
+        # entrega resultados: el camino del examen no puede contagiarse.
+        self.preguntas[0].procedimiento = 'Primero multiplicas y luego sumas.'
+        self.preguntas[0].save(update_fields=['procedimiento'])
+
+        respuesta = self.client.post(
+            reverse('evaluaciones:api_iniciar', args=[self.evaluacion.id])
+        )
+
+        self.assertNotIn('Primero multiplicas', respuesta.content.decode())

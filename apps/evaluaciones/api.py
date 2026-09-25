@@ -59,15 +59,32 @@ def iniciar_evaluacion(request, evaluacion_id):
     if not evaluacion.grupo.alumnos.filter(id=alumno.id).exists():
         return Response({'detalle': 'No tienes acceso a esta evaluación.'}, status=403)
 
+    intento = IntentoEvaluacion.objects.filter(
+        evaluacion=evaluacion, alumno=alumno
+    ).first()
+
+    # Lo primero que se mira es si ya presento, antes que la disponibilidad:
+    # quien vuelve por su retroalimentacion casi siempre lo hace con la
+    # evaluacion ya cerrada, que es justo cuando el plazo dice que no.
+    #
+    # El resultado no lleva motivo, porque el aviso de "se acabo el tiempo"
+    # explica una interrupcion y aqui no se interrumpio nada: el alumno entro
+    # por su cuenta a leer lo que ya termino.
+    if intento and intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
+        return Response({
+            'intento_id': intento.id,
+            'titulo': evaluacion.titulo,
+            'finalizado': True,
+            'resultado': construir_resultado(intento),
+        })
+
     if not evaluacion.esta_disponible():
         return Response({'detalle': 'La evaluación no está disponible en este momento.'}, status=400)
 
-    intento, _ = IntentoEvaluacion.objects.get_or_create(
-        evaluacion=evaluacion, alumno=alumno
-    )
-
-    if intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
-        return Response({'detalle': 'Ya presentaste esta evaluación.'}, status=400)
+    if intento is None:
+        intento = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=alumno
+        )
 
     # Las respuestas que el alumno ya haya guardado, para poder reanudar.
     previas = {
@@ -75,11 +92,28 @@ def iniciar_evaluacion(request, evaluacion_id):
         for respuesta in intento.respuestas.all()
     }
 
+    preguntas = _serializar_preguntas(evaluacion)
+
+    # Se reanuda en la primera sin responder y no en la primera de todas: el
+    # alumno que vuelve tras un corte no tiene que pasar otra vez por las que
+    # ya contesto. Si no queda ninguna, se abre en la primera.
+    indice_inicial = next(
+        (
+            posicion
+            for posicion, pregunta in enumerate(preguntas)
+            if pregunta['id'] not in previas
+        ),
+        0,
+    )
+
     return Response({
         'intento_id': intento.id,
         'titulo': evaluacion.titulo,
-        'preguntas': _serializar_preguntas(evaluacion),
+        'preguntas': preguntas,
         'respuestas_previas': previas,
+        'indice_inicial': indice_inicial,
+        # El tiempo lo dice el servidor; el reloj del navegador no manda.
+        'segundos_restantes': evaluacion.segundos_restantes(),
     })
 
 
