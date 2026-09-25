@@ -144,6 +144,16 @@ class Evaluacion(models.Model):
             return False
         return self.fecha_inicio <= ahora <= self.fecha_fin
 
+    def segundos_restantes(self):
+        """Segundos que le quedan de plazo, nunca negativos.
+
+        La cuenta regresiva que ve el alumno se calcula con esto y no con el
+        reloj de su navegador, que el puede mover.
+        """
+        if self.estado == self.Estado.FINALIZADA:
+            return 0
+        return max(0, int((self.fecha_fin - timezone.now()).total_seconds()))
+
 
 class CategoriaEvaluacion(models.Model):
     """Cuantas preguntas se toman de una categoria dentro de una evaluacion."""

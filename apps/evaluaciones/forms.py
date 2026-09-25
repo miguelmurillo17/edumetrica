@@ -1,13 +1,26 @@
 """Formularios para que el profesor programe una evaluacion a un grupo."""
 
+from datetime import timedelta
+
 from django import forms
 from django.db.models import Q
 from django.forms import inlineformset_factory, BaseInlineFormSet
+from django.utils import timezone
 
 from apps.catalogo.models import Materia, Categoria, Pregunta
 from apps.usuarios.models import Persona
 
 from .models import Grupo, Evaluacion, CategoriaEvaluacion, AsignacionDocente
+
+# Lo menos que puede durar una evaluacion. El alumno recibe un aviso cuando le
+# quedan tres minutos, asi que una ventana mas corta que esta nacerian juntos el
+# examen y su cuenta regresiva.
+MINUTOS_MINIMOS = 5
+
+# Cuanto se le perdona al profesor que la hora de inicio ya haya pasado. El
+# caso comun es programarla para empezar "ahora mismo", y entre que elige la
+# hora y acaba de llenar la tabla de asignaturas se le van unos minutos.
+MINUTOS_DE_GRACIA = 5
 
 
 class SelectConDisciplina(forms.Select):
@@ -88,8 +101,24 @@ class EvaluacionForm(forms.ModelForm):
         fin = datos.get('fecha_fin')
 
         # La evaluacion no puede terminar antes de empezar.
-        if inicio and fin and fin <= inicio:
-            self.add_error('fecha_fin', 'La fecha de fin debe ser posterior a la de inicio.')
+        if inicio and fin:
+            if fin <= inicio:
+                self.add_error('fecha_fin', 'La fecha de fin debe ser posterior a la de inicio.')
+            elif fin - inicio < timedelta(minutes=MINUTOS_MINIMOS):
+                self.add_error(
+                    'fecha_fin',
+                    f'La evaluación debe durar al menos {MINUTOS_MINIMOS} minutos.',
+                )
+
+        # Programar una evaluacion que ya paso dejaria a los alumnos sin
+        # oportunidad de presentarla: nace cerrada. Solo se revisa al
+        # programarla, porque una evaluacion vieja se debe poder editar.
+        if inicio and self.instance.pk is None:
+            limite = timezone.now() - timedelta(minutes=MINUTOS_DE_GRACIA)
+            if inicio < limite:
+                self.add_error(
+                    'fecha_inicio', 'La fecha de inicio no puede estar en el pasado.'
+                )
 
         return datos
 

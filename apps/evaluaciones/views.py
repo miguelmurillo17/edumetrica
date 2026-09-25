@@ -13,6 +13,7 @@ from .models import Grupo, Evaluacion, IntentoEvaluacion
 from .forms import (
     EvaluacionForm, CategoriaEvaluacionFormSet, GrupoForm, AsignacionDocenteFormSet,
 )
+from .servicios import actualizar_estados, cerrar_evaluacion, poner_al_dia
 
 
 @login_required
@@ -25,6 +26,11 @@ def panel_profesor(request):
 def panel_alumno(request):
     """Muestra al alumno sus evaluaciones y la situacion de cada una."""
     alumno = request.user
+
+    # Antes de pintar nada se ponen al dia: una evaluacion cuyo plazo vencio
+    # tiene que aparecer cerrada, no disponible.
+    actualizar_estados(Evaluacion.objects.filter(grupo__alumnos=alumno))
+
     evaluaciones = (
         Evaluacion.objects
         .filter(grupo__alumnos=alumno)
@@ -57,8 +63,34 @@ def panel_alumno(request):
 
 @login_required
 def presentar_evaluacion(request, evaluacion_id):
-    """Monta la aplicacion de Vue para que el alumno presente la evaluacion."""
+    """Monta la aplicacion de Vue para que el alumno presente la evaluacion.
+
+    La puerta se cierra aqui y no solo en la API: sin esta revision, cualquiera
+    con la direccion abria la pantalla completa y se topaba con el error de la
+    primera peticion, cuando lo correcto es no dejarlo entrar.
+    """
     evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id)
+    poner_al_dia(evaluacion)
+
+    if not evaluacion.grupo.alumnos.filter(id=request.user.id).exists():
+        messages.error(request, 'No tienes acceso a esa evaluación.')
+        return redirect('usuarios:inicio')
+
+    # Quien ya la presento si puede volver: es donde lee la retroalimentacion
+    # y el procedimiento de las preguntas que fallo.
+    intento = evaluacion.intentos.filter(alumno=request.user).first()
+    ya_presentada = (
+        intento is not None
+        and intento.estado == IntentoEvaluacion.Estado.FINALIZADO
+    )
+
+    if not ya_presentada and not evaluacion.esta_disponible():
+        if timezone.now() < evaluacion.fecha_inicio:
+            messages.error(request, 'Esa evaluación todavía no comienza.')
+        else:
+            messages.error(request, 'Esa evaluación ya cerró.')
+        return redirect('evaluaciones:panel_alumno')
+
     return render(request, 'evaluaciones/presentar_evaluacion.html', {'evaluacion': evaluacion})
 
 
@@ -157,6 +189,8 @@ def editar_grupo(request, grupo_id):
 @roles_permitidos(Persona.Rol.PROFESOR)
 def lista_evaluaciones(request):
     """Muestra las evaluaciones que ha programado el profesor."""
+    actualizar_estados(Evaluacion.objects.filter(profesor=request.user))
+
     evaluaciones = (
         Evaluacion.objects
         .filter(profesor=request.user)
@@ -170,6 +204,7 @@ def lista_evaluaciones(request):
 def detalle_evaluacion(request, evaluacion_id):
     """Muestra al profesor el avance de cada alumno en una evaluacion."""
     evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id, profesor=request.user)
+    poner_al_dia(evaluacion)
 
     # Intentos indexados por alumno para cruzarlos con la lista del grupo.
     intentos = {
@@ -203,16 +238,11 @@ def finalizar_evaluacion(request, evaluacion_id):
     if request.method == 'POST' and evaluacion.estado != Evaluacion.Estado.FINALIZADA:
         ahora = timezone.now()
         # Si todavia no llegaba la hora de fin, fue una finalizacion anticipada.
-        evaluacion.estado = Evaluacion.Estado.FINALIZADA
-        evaluacion.finalizada_anticipadamente = ahora < evaluacion.fecha_fin
-        evaluacion.save()
-
-        # Cada alumno que seguia presentando se cierra con lo que llevaba.
-        for intento in evaluacion.intentos.filter(estado=IntentoEvaluacion.Estado.EN_CURSO):
-            intento.estado = IntentoEvaluacion.Estado.FINALIZADO
-            intento.fecha_fin = ahora
-            intento.calificacion = intento.calcular_calificacion()
-            intento.save()
+        # El cierre en si -y el de los intentos que seguian abiertos- lo hace el
+        # mismo servicio que usa el vencimiento del plazo.
+        cerrar_evaluacion(
+            evaluacion, ahora, anticipada=ahora < evaluacion.fecha_fin
+        )
 
         messages.success(
             request,

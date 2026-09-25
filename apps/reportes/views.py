@@ -16,8 +16,10 @@ from apps.usuarios.models import Persona
 from apps.usuarios.decoradores import roles_permitidos
 from apps.usuarios.listados import resolver_orden
 from apps.catalogo.models import Materia
-from apps.evaluaciones.models import Grupo, IntentoEvaluacion, RespuestaAlumno
-from apps.evaluaciones.servicios import construir_resultado
+from apps.evaluaciones.models import (
+    Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno,
+)
+from apps.evaluaciones.servicios import actualizar_estados, construir_resultado
 
 # El tablero lo pueden ver el profesor y el administrador.
 ROLES_TABLERO = (Persona.Rol.PROFESOR, Persona.Rol.ADMINISTRADOR)
@@ -51,6 +53,20 @@ def _restar_anios(fecha, anios):
         return fecha.replace(year=fecha.year - anios)
     except ValueError:
         return fecha.replace(year=fecha.year - anios, day=28)
+
+
+def _poner_al_dia(request):
+    """Cierra las evaluaciones vencidas antes de ponerse a contar.
+
+    El tablero solo mira los intentos finalizados, asi que el alumno que cerro
+    el navegador y dejo su intento abierto no aparece en ningun promedio hasta
+    que alguien lo cierra. Se hace aqui, al entrar, para que los numeros del
+    tablero no dependan de quien paso antes por el panel del alumno.
+    """
+    evaluaciones = Evaluacion.objects.all()
+    if request.user.es_profesor:
+        evaluaciones = evaluaciones.filter(profesor=request.user)
+    actualizar_estados(evaluaciones)
 
 
 def _intentos_visibles(request):
@@ -225,6 +241,8 @@ def _resumen_filtros(request, intentos):
 @roles_permitidos(*ROLES_TABLERO)
 def dashboard(request):
     """Muestra el resumen, las graficas y los filtros del tablero."""
+    _poner_al_dia(request)
+
     intentos = _filtrar_intentos(request)
     resumen_filtros, alumnos_coincidentes = _resumen_filtros(request, intentos)
 
@@ -362,6 +380,8 @@ def dashboard(request):
 @roles_permitidos(*ROLES_TABLERO)
 def exportar_csv(request):
     """Exporta los resultados filtrados en un archivo CSV."""
+    _poner_al_dia(request)
+
     intentos = _filtrar_intentos(request).order_by(
         'evaluacion__grupo__nombre', 'alumno__apellido'
     )
@@ -395,6 +415,8 @@ def lista_intentos(request):
     particular: el tablero se queda en promedios y graficas, aqui se ve
     renglon por renglon.
     """
+    _poner_al_dia(request)
+
     intentos = _filtrar_intentos(request).select_related(
         'alumno', 'evaluacion__grupo', 'evaluacion__materia'
     )

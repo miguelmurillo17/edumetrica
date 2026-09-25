@@ -53,8 +53,11 @@
     <!-- Resultado final -->
     <div v-else-if="estado === 'resultado'" class="quiz-resultado">
         <h1>Resultado</h1>
-        <p v-if="finalizadaPorProfesor" class="aviso-finalizada">
+        <p v-if="motivoCierre === 'profesor'" class="aviso-finalizada">
             El profesor finalizó la evaluación. Este es tu resultado hasta ese momento.
+        </p>
+        <p v-else-if="motivoCierre === 'tiempo'" class="aviso-finalizada">
+            Se terminó el tiempo de la evaluación. Este es tu resultado hasta ese momento.
         </p>
         <div class="calificacion-grande">[[ resultado.calificacion ]]</div>
         <p>Acertaste [[ resultado.aciertos ]] de [[ resultado.total ]] preguntas.</p>
@@ -126,7 +129,9 @@
                 enviando: false,
                 resultado: null,
                 intervaloSondeo: null,
-                finalizadaPorProfesor: false,
+                // Por que se cerro la evaluacion: 'profesor' o 'tiempo'. Vacio
+                // mientras el alumno sea quien decide terminar.
+                motivoCierre: '',
             };
         },
         computed: {
@@ -167,9 +172,10 @@
                         pregunta: preguntaId,
                         opcion: opcionId,
                     });
-                    // El profesor pudo finalizar la evaluacion justo en ese momento.
+                    // La evaluacion pudo cerrarse justo en ese momento, porque
+                    // el profesor la finalizo o porque se acabo el plazo.
                     if (datos.finalizada) {
-                        this.finalizadaPorProfesor = true;
+                        this.motivoCierre = datos.motivo || 'tiempo';
                         await this.mostrarResultado();
                     }
                 } catch (error) {
@@ -188,11 +194,11 @@
                 }
             },
             async revisarEstado() {
-                // Si el profesor finalizo, se le muestra al alumno su resultado.
+                // Si la evaluacion ya cerro, se le muestra al alumno su resultado.
                 try {
                     const datos = await peticion(`/api/alumno/intentos/${this.intentoId}/estado/`, null, 'GET');
                     if (datos.finalizada) {
-                        this.finalizadaPorProfesor = true;
+                        this.motivoCierre = datos.motivo || 'tiempo';
                         await this.mostrarResultado();
                     }
                 } catch (error) {

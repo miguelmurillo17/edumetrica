@@ -23,6 +23,7 @@
 
             {% if fila.situacion == 'disponible' %}
             <span class="estado estado-disponible">Disponible</span>
+            <p class="datos-evaluacion">Cierra el {{ fila.evaluacion.fecha_fin|date:"d/m/Y H:i" }}</p>
             <a class="boton-principal boton-compacto" href="{% url 'evaluaciones:presentar_evaluacion' fila.evaluacion.id %}">Presentar</a>
 
             {% elif fila.situacion == 'finalizada' %}

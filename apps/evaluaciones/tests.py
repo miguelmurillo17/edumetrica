@@ -11,7 +11,9 @@ llevaba.
 """
 
 from datetime import date, timedelta
+from io import StringIO
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -26,6 +28,7 @@ from .models import (
     AsignacionDocente, CategoriaEvaluacion, Evaluacion, Grupo,
     IntentoEvaluacion, RespuestaAlumno,
 )
+from .servicios import actualizar_estados, cerrar_evaluacion
 
 
 class BaseEvaluacionesTest(TestCase):
@@ -202,6 +205,15 @@ class ProgramarEvaluacionTest(BaseEvaluacionesTest):
             self.crear_pregunta(categoria=self.otra_categoria)
         self.client.force_login(self.profesor)
 
+    def cuando(self, momento):
+        """Formatea un momento como lo manda el selector del navegador.
+
+        Hay que pasar por la hora local: timezone.now() viene en UTC, y
+        formatearlo tal cual correria las fechas las horas que lleve de
+        diferencia la zona del proyecto.
+        """
+        return timezone.localtime(momento).strftime('%Y-%m-%dT%H:%M')
+
     def datos(self, renglones, **extras):
         """Arma el envio del formulario con su tabla de categorias."""
         ahora = timezone.now()
@@ -209,8 +221,10 @@ class ProgramarEvaluacionTest(BaseEvaluacionesTest):
             'titulo': 'Diagnóstico',
             'grupo': self.grupo.id,
             'materia': self.materia.id,
-            'fecha_inicio': (ahora - timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M'),
-            'fecha_fin': (ahora + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M'),
+            # Arranca al momento: programarla en el pasado la dejaria cerrada
+            # de nacimiento, y el formulario ya no lo permite.
+            'fecha_inicio': self.cuando(ahora),
+            'fecha_fin': self.cuando(ahora + timedelta(hours=1)),
             'categorias_elegidas-TOTAL_FORMS': str(len(renglones)),
             'categorias_elegidas-INITIAL_FORMS': '0',
             'categorias_elegidas-MIN_NUM_FORMS': '0',
@@ -353,12 +367,40 @@ class ProgramarEvaluacionTest(BaseEvaluacionesTest):
         ahora = timezone.now()
         respuesta = self.programar(
             [(self.categoria, 1)],
-            fecha_inicio=(ahora + timedelta(hours=2)).strftime('%Y-%m-%dT%H:%M'),
-            fecha_fin=(ahora + timedelta(hours=1)).strftime('%Y-%m-%dT%H:%M'),
+            fecha_inicio=self.cuando(ahora + timedelta(hours=2)),
+            fecha_fin=self.cuando(ahora + timedelta(hours=1)),
         )
 
         self.assertEqual(respuesta.status_code, 200)
         self.assertContains(respuesta, 'posterior a la de inicio')
+        self.assertFalse(Evaluacion.objects.exists())
+
+    def test_rechaza_programarla_en_el_pasado(self):
+        # Una evaluacion con la ventana ya vencida nace cerrada: ningun alumno
+        # del grupo podria presentarla.
+        ahora = timezone.now()
+        respuesta = self.programar(
+            [(self.categoria, 1)],
+            fecha_inicio=self.cuando(ahora - timedelta(hours=2)),
+            fecha_fin=self.cuando(ahora - timedelta(hours=1)),
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'no puede estar en el pasado')
+        self.assertFalse(Evaluacion.objects.exists())
+
+    def test_rechaza_una_ventana_demasiado_corta(self):
+        # Con dos minutos de plazo, el aviso de que quedan tres minutos saldria
+        # antes de que el alumno abriera la primera pregunta.
+        ahora = timezone.now()
+        respuesta = self.programar(
+            [(self.categoria, 1)],
+            fecha_inicio=self.cuando(ahora + timedelta(hours=1)),
+            fecha_fin=self.cuando(ahora + timedelta(hours=1, minutes=2)),
+        )
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertContains(respuesta, 'al menos 5 minutos')
         self.assertFalse(Evaluacion.objects.exists())
 
     def test_el_profesor_solo_ve_sus_grupos(self):
@@ -670,3 +712,284 @@ class CrearGrupoTest(BaseEvaluacionesTest):
         self.assertEqual(respuesta.status_code, 302)
         nuevo = Grupo.objects.get(nombre='Tercero C')
         self.assertIn(libre, nuevo.alumnos.all())
+
+
+class VencimientoTest(BaseEvaluacionesTest):
+    """Que ocurre cuando se acaba el plazo y nadie cerro la evaluacion.
+
+    Es el hueco que mas caro sale: sin este cierre una evaluacion vencida sigue
+    diciendo "Programada" y el intento de quien cerro el navegador se queda en
+    curso para siempre. Como el tablero solo cuenta intentos finalizados, ese
+    alumno desaparece del promedio de su grupo.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.preguntas = [self.crear_pregunta() for _ in range(4)]
+
+    def evaluacion_vencida(self):
+        ahora = timezone.now()
+        return self.crear_evaluacion(
+            preguntas=self.preguntas,
+            inicio=ahora - timedelta(hours=2),
+            fin=ahora - timedelta(minutes=1),
+        )
+
+    def test_la_vencida_queda_finalizada(self):
+        evaluacion = self.evaluacion_vencida()
+
+        actualizar_estados()
+
+        evaluacion.refresh_from_db()
+        self.assertEqual(evaluacion.estado, Evaluacion.Estado.FINALIZADA)
+
+    def test_el_vencimiento_no_es_una_finalizacion_anticipada(self):
+        # La bandera distingue la decision del profesor de que se acabara el
+        # plazo, y el capitulo de resultados se apoya en esa diferencia.
+        evaluacion = self.evaluacion_vencida()
+
+        actualizar_estados()
+
+        evaluacion.refresh_from_db()
+        self.assertFalse(evaluacion.finalizada_anticipadamente)
+
+    def test_cierra_el_intento_abandonado_con_su_parcial(self):
+        evaluacion = self.evaluacion_vencida()
+        intento = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno
+        )
+        self.responder(intento, self.preguntas[0], True)
+
+        actualizar_estados()
+
+        intento.refresh_from_db()
+        self.assertEqual(intento.estado, IntentoEvaluacion.Estado.FINALIZADO)
+        self.assertEqual(float(intento.calificacion), 25)
+        self.assertIsNotNone(intento.fecha_fin)
+
+    def test_el_alumno_que_no_empezo_no_gana_un_intento(self):
+        # Vale lo mismo que al finalizar anticipadamente: no se inventan
+        # intentos, quien no entro sigue como no iniciado.
+        self.evaluacion_vencida()
+
+        actualizar_estados()
+
+        self.assertFalse(IntentoEvaluacion.objects.exists())
+
+    def test_la_ventana_abierta_la_marca_en_curso(self):
+        # El estado en curso estaba declarado en el modelo y no se usaba nunca.
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        actualizar_estados()
+
+        evaluacion.refresh_from_db()
+        self.assertEqual(evaluacion.estado, Evaluacion.Estado.EN_CURSO)
+
+    def test_la_que_no_ha_empezado_sigue_programada(self):
+        ahora = timezone.now()
+        evaluacion = self.crear_evaluacion(
+            preguntas=self.preguntas,
+            inicio=ahora + timedelta(hours=1),
+            fin=ahora + timedelta(hours=2),
+        )
+
+        actualizar_estados()
+
+        evaluacion.refresh_from_db()
+        self.assertEqual(evaluacion.estado, Evaluacion.Estado.PROGRAMADA)
+
+    def test_no_toca_lo_que_el_profesor_ya_habia_cerrado(self):
+        evaluacion = self.crear_evaluacion(
+            preguntas=self.preguntas,
+            estado=Evaluacion.Estado.FINALIZADA,
+            finalizada_anticipadamente=True,
+        )
+        cerrado = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=75,
+        )
+
+        actualizar_estados()
+
+        evaluacion.refresh_from_db()
+        cerrado.refresh_from_db()
+        self.assertTrue(evaluacion.finalizada_anticipadamente)
+        self.assertEqual(float(cerrado.calificacion), 75)
+
+    def test_el_panel_del_alumno_la_muestra_cerrada(self):
+        # El cierre es perezoso: entrar al panel es lo que lo dispara.
+        self.evaluacion_vencida()
+        self.client.force_login(self.alumno)
+
+        respuesta = self.client.get(reverse('evaluaciones:panel_alumno'))
+
+        situaciones = [
+            fila['situacion'] for fila in respuesta.context['evaluaciones']
+        ]
+        self.assertEqual(situaciones, ['cerrada'])
+
+    def test_el_comando_cierra_las_vencidas(self):
+        # El comando existe para cron: cierra aunque nadie tenga el navegador
+        # abierto, que es lo que necesita un aviso de "ya puedes ver resultados".
+        evaluacion = self.evaluacion_vencida()
+
+        call_command('cerrar_evaluaciones', stdout=StringIO())
+
+        evaluacion.refresh_from_db()
+        self.assertEqual(evaluacion.estado, Evaluacion.Estado.FINALIZADA)
+
+
+class ResponderFueraDePlazoTest(BaseEvaluacionesTest):
+    """El plazo lo vigila el servidor, no el navegador del alumno."""
+
+    def setUp(self):
+        super().setUp()
+        self.preguntas = [self.crear_pregunta() for _ in range(2)]
+        self.evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+        self.intento = IntentoEvaluacion.objects.create(
+            evaluacion=self.evaluacion, alumno=self.alumno
+        )
+        self.client.force_login(self.alumno)
+
+    def vencer_el_plazo(self):
+        """Mueve la ventana al pasado sin pasar por el formulario."""
+        ahora = timezone.now()
+        Evaluacion.objects.filter(id=self.evaluacion.id).update(
+            fecha_inicio=ahora - timedelta(hours=2),
+            fecha_fin=ahora - timedelta(minutes=1),
+        )
+
+    def responder_por_la_api(self, pregunta):
+        opcion = pregunta.opciones.filter(es_correcta=True).first()
+        return self.client.post(
+            reverse('evaluaciones:api_responder', args=[self.intento.id]),
+            {'pregunta': pregunta.id, 'opcion': opcion.id},
+            content_type='application/json',
+        )
+
+    def consultar_estado(self):
+        return self.client.get(
+            reverse('evaluaciones:api_estado', args=[self.intento.id])
+        )
+
+    def test_dentro_del_plazo_la_respuesta_se_guarda(self):
+        respuesta = self.responder_por_la_api(self.preguntas[0])
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(RespuestaAlumno.objects.filter(intento=self.intento).exists())
+
+    def test_despues_del_plazo_la_respuesta_no_se_guarda(self):
+        # Con la pestana abierta, un alumno podria seguir contestando horas
+        # despues de que la evaluacion cerro y mejorar su calificacion.
+        self.vencer_el_plazo()
+
+        respuesta = self.responder_por_la_api(self.preguntas[0])
+
+        self.assertEqual(respuesta.status_code, 200)
+        self.assertTrue(respuesta.json()['finalizada'])
+        self.assertFalse(RespuestaAlumno.objects.filter(intento=self.intento).exists())
+
+    def test_despues_del_plazo_el_intento_queda_cerrado(self):
+        self.vencer_el_plazo()
+
+        self.responder_por_la_api(self.preguntas[0])
+
+        self.intento.refresh_from_db()
+        self.assertEqual(self.intento.estado, IntentoEvaluacion.Estado.FINALIZADO)
+
+    def test_el_sondeo_avisa_que_se_acabo_el_tiempo(self):
+        # El motivo cambia el mensaje que lee el alumno en su resultado.
+        self.vencer_el_plazo()
+
+        respuesta = self.consultar_estado()
+
+        self.assertTrue(respuesta.json()['finalizada'])
+        self.assertEqual(respuesta.json()['motivo'], 'tiempo')
+
+    def test_el_sondeo_avisa_que_la_cerro_el_profesor(self):
+        cerrar_evaluacion(self.evaluacion, anticipada=True)
+
+        respuesta = self.consultar_estado()
+
+        self.assertTrue(respuesta.json()['finalizada'])
+        self.assertEqual(respuesta.json()['motivo'], 'profesor')
+
+    def test_el_sondeo_no_cierra_nada_dentro_del_plazo(self):
+        respuesta = self.consultar_estado()
+
+        self.assertFalse(respuesta.json()['finalizada'])
+        self.intento.refresh_from_db()
+        self.assertEqual(self.intento.estado, IntentoEvaluacion.Estado.EN_CURSO)
+
+
+class PresentarEvaluacionTest(BaseEvaluacionesTest):
+    """Quien puede abrir la pantalla con la que se presenta la evaluacion.
+
+    La revision vive en la vista y no solo en la API: sin ella, cualquiera con
+    la direccion veia la pantalla completa y se topaba con el error hasta la
+    primera peticion.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.preguntas = [self.crear_pregunta() for _ in range(2)]
+        self.evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+    def presentar(self):
+        return self.client.get(reverse(
+            'evaluaciones:presentar_evaluacion', args=[self.evaluacion.id]
+        ))
+
+    def mover_ventana(self, inicio, fin):
+        Evaluacion.objects.filter(id=self.evaluacion.id).update(
+            fecha_inicio=inicio, fecha_fin=fin
+        )
+
+    def test_el_alumno_del_grupo_entra(self):
+        self.client.force_login(self.alumno)
+
+        self.assertEqual(self.presentar().status_code, 200)
+
+    def test_un_alumno_de_otro_grupo_no_entra(self):
+        ajeno = Persona.objects.create_user(
+            correo='ajeno@prueba.mx', nombre='Ivan', apellido='Cruz',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+        self.client.force_login(ajeno)
+
+        respuesta = self.presentar()
+
+        self.assertRedirects(
+            respuesta, reverse('usuarios:inicio'), target_status_code=302
+        )
+
+    def test_no_se_entra_a_una_evaluacion_vencida(self):
+        ahora = timezone.now()
+        self.mover_ventana(ahora - timedelta(hours=2), ahora - timedelta(minutes=1))
+        self.client.force_login(self.alumno)
+
+        respuesta = self.presentar()
+
+        self.assertRedirects(respuesta, reverse('evaluaciones:panel_alumno'))
+
+    def test_no_se_entra_antes_de_que_empiece(self):
+        ahora = timezone.now()
+        self.mover_ventana(ahora + timedelta(hours=1), ahora + timedelta(hours=2))
+        self.client.force_login(self.alumno)
+
+        respuesta = self.presentar()
+
+        self.assertRedirects(respuesta, reverse('evaluaciones:panel_alumno'))
+
+    def test_quien_ya_la_presento_puede_volver_a_su_resultado(self):
+        # Es donde lee la retroalimentacion y el procedimiento de las falladas,
+        # asi que la puerta no se le cierra cuando la evaluacion ya termino.
+        IntentoEvaluacion.objects.create(
+            evaluacion=self.evaluacion, alumno=self.alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=80,
+        )
+        ahora = timezone.now()
+        self.mover_ventana(ahora - timedelta(hours=2), ahora - timedelta(minutes=1))
+        self.client.force_login(self.alumno)
+
+        self.assertEqual(self.presentar().status_code, 200)

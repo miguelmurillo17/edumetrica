@@ -25,6 +25,7 @@
                 <th>Disciplina</th>
                 <th>Preguntas</th>
                 <th>Inicio</th>
+                <th>Fin</th>
                 <th>Estado</th>
             </tr>
         </thead>
@@ -40,6 +41,7 @@
                 <td>{{ evaluacion.materia.nombre }}</td>
                 <td>{{ evaluacion.numero_preguntas }}</td>
                 <td>{{ evaluacion.fecha_inicio|date:"d/m/Y H:i" }}</td>
+                <td>{{ evaluacion.fecha_fin|date:"d/m/Y H:i" }}</td>
                 <td><span class="estado estado-{{ evaluacion.estado }}">{{ evaluacion.get_estado_display }}</span></td>
             </tr>
             {% endfor %}

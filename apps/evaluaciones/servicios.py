@@ -1,9 +1,22 @@
-"""Construccion del detalle de un intento ya finalizado.
+"""Reglas del ciclo de vida de una evaluacion y de sus intentos.
 
-Lo usan tanto la API del alumno (apps.evaluaciones.api) como la pantalla de
-exploracion de resultados del profesor (apps.reportes), asi que vive aparte
-de las dos para no duplicar la logica ni arriesgar que se desincronicen.
+Aqui vive lo que comparten la API del alumno (apps.evaluaciones.api), las
+vistas del profesor y la exploracion de resultados (apps.reportes): el detalle
+de un intento ya finalizado, y el cierre de las evaluaciones cuando se les
+acaba el plazo. Vive aparte de las tres para no duplicar la logica ni
+arriesgar que se desincronicen.
+
+Nada corre en segundo plano para vigilar el reloj -no hay Celery ni tareas
+programadas, igual que no hay WebSockets en el sondeo del alumno-, asi que el
+cierre es perezoso: se pone al dia cada vez que alguien mira una evaluacion,
+sea su panel, su listado, su detalle o cualquier peticion del alumno. El
+comando cerrar_evaluaciones hace lo mismo desde cron, para que el cierre
+tambien ocurra cuando nadie tiene el navegador abierto.
 """
+
+from django.utils import timezone
+
+from .models import Evaluacion, IntentoEvaluacion
 
 
 def construir_resultado(intento):
@@ -48,3 +61,98 @@ def construir_resultado(intento):
         'aciertos': intento.respuestas.filter(es_correcta=True).count(),
         'detalle': detalle,
     }
+
+
+def cerrar_intento(intento, ahora=None):
+    """Finaliza un intento con la calificacion de lo que llevaba respondido."""
+    if intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
+        return intento
+
+    intento.estado = IntentoEvaluacion.Estado.FINALIZADO
+    intento.fecha_fin = ahora or timezone.now()
+    intento.calificacion = intento.calcular_calificacion()
+    intento.save(update_fields=['estado', 'fecha_fin', 'calificacion'])
+    return intento
+
+
+def cerrar_intentos_en_curso(evaluacion, ahora=None):
+    """Cierra los intentos que siguen abiertos y devuelve los que cerro."""
+    ahora = ahora or timezone.now()
+    return [
+        cerrar_intento(intento, ahora)
+        for intento in evaluacion.intentos.filter(
+            estado=IntentoEvaluacion.Estado.EN_CURSO
+        )
+    ]
+
+
+def cerrar_evaluacion(evaluacion, ahora=None, anticipada=False):
+    """Finaliza la evaluacion y cierra los intentos que quedaron abiertos.
+
+    Quien llama decide si fue anticipada, porque esa bandera es del profesor
+    que cerro antes de tiempo: en el capitulo de resultados sirve justo para
+    distinguir su decision de que se acabara el plazo.
+    """
+    if evaluacion.estado == Evaluacion.Estado.FINALIZADA:
+        return []
+
+    ahora = ahora or timezone.now()
+    evaluacion.estado = Evaluacion.Estado.FINALIZADA
+    evaluacion.finalizada_anticipadamente = anticipada
+    evaluacion.save(update_fields=['estado', 'finalizada_anticipadamente'])
+    return cerrar_intentos_en_curso(evaluacion, ahora)
+
+
+def actualizar_estados(consulta=None):
+    """Pone al dia el estado de las evaluaciones segun el reloj.
+
+    Una evaluacion programada pasa a en curso cuando entra su ventana, y a
+    finalizada cuando la ventana se cierra; al cerrarla se cierran tambien los
+    intentos de quienes no alcanzaron a entregar, con la calificacion de lo que
+    llevaban.
+
+    Sin esto una evaluacion vencida seguiria diciendo "Programada", y el
+    intento de quien cerro el navegador se quedaria en curso para siempre: como
+    el tablero solo cuenta los intentos finalizados, ese alumno desapareceria
+    de los promedios del grupo.
+
+    Se trabaja sobre identificadores y no sobre la consulta que llega porque
+    las vistas la traen filtrada por otras tablas -los alumnos del grupo, por
+    ejemplo-, y un update() sobre esos cruces no es de fiar.
+    """
+    ahora = timezone.now()
+    if consulta is None:
+        consulta = Evaluacion.objects.all()
+
+    pendientes = list(
+        consulta
+        .exclude(estado=Evaluacion.Estado.FINALIZADA)
+        .values_list('id', flat=True)
+    )
+    if not pendientes:
+        return
+
+    por_revisar = Evaluacion.objects.filter(id__in=pendientes)
+
+    # Las vencidas se cierran una por una porque cada una tiene que arrastrar
+    # sus intentos; las que apenas entraron a su ventana se marcan de golpe.
+    for evaluacion in por_revisar.filter(fecha_fin__lte=ahora):
+        cerrar_evaluacion(evaluacion, ahora)
+
+    por_revisar.filter(
+        estado=Evaluacion.Estado.PROGRAMADA,
+        fecha_inicio__lte=ahora,
+        fecha_fin__gt=ahora,
+    ).update(estado=Evaluacion.Estado.EN_CURSO)
+
+
+def poner_al_dia(evaluacion):
+    """Actualiza el estado de una sola evaluacion y la refresca en memoria."""
+    actualizar_estados(Evaluacion.objects.filter(id=evaluacion.id))
+    evaluacion.refresh_from_db()
+    return evaluacion
+
+
+def motivo_cierre(evaluacion):
+    """Por que se cerro la evaluacion, en los terminos que lee el alumno."""
+    return 'profesor' if evaluacion.finalizada_anticipadamente else 'tiempo'

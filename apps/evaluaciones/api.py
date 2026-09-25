@@ -11,7 +11,6 @@ la respuesta que el alumno recibe al iniciar.
 """
 
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 
 from rest_framework.decorators import api_view
 from rest_framework.response import Response
@@ -19,7 +18,9 @@ from rest_framework.response import Response
 from apps.catalogo.models import Pregunta, OpcionRespuesta
 
 from .models import Evaluacion, IntentoEvaluacion, RespuestaAlumno
-from .servicios import construir_resultado
+from .servicios import (
+    cerrar_intento, construir_resultado, motivo_cierre, poner_al_dia,
+)
 
 
 def _url_imagen(campo):
@@ -52,6 +53,7 @@ def iniciar_evaluacion(request, evaluacion_id):
     """Inicia o reanuda el intento del alumno y entrega las preguntas."""
     alumno = request.user
     evaluacion = get_object_or_404(Evaluacion, id=evaluacion_id)
+    poner_al_dia(evaluacion)
 
     # El alumno solo puede presentar evaluaciones de sus grupos.
     if not evaluacion.grupo.alumnos.filter(id=alumno.id).exists():
@@ -83,12 +85,31 @@ def iniciar_evaluacion(request, evaluacion_id):
 
 @api_view(['POST'])
 def responder_pregunta(request, intento_id):
-    """Guarda la respuesta del alumno a una pregunta del intento."""
-    intento = get_object_or_404(IntentoEvaluacion, id=intento_id, alumno=request.user)
+    """Guarda la respuesta del alumno a una pregunta del intento.
+
+    Aqui se vigila el plazo, y no solo al iniciar: con la pestana abierta, un
+    alumno podria seguir respondiendo horas despues de que la evaluacion cerro y
+    recalcular su calificacion. El reloj del servidor es el que manda.
+    """
+    intento = get_object_or_404(
+        IntentoEvaluacion.objects.select_related('evaluacion'),
+        id=intento_id, alumno=request.user,
+    )
+    evaluacion = poner_al_dia(intento.evaluacion)
+    # Si el plazo acababa de vencer, poner_al_dia ya cerro este intento.
+    intento.refresh_from_db()
 
     if intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
-        # El profesor pudo haber finalizado la evaluacion mientras el alumno respondia.
-        return Response({'finalizada': True})
+        # Se le acabo el tiempo, o el profesor finalizo la evaluacion mientras
+        # el alumno respondia.
+        return Response({'finalizada': True, 'motivo': motivo_cierre(evaluacion)})
+
+    if not evaluacion.esta_disponible():
+        # Solo se llega aqui si el profesor movio las fechas a media
+        # presentacion: la respuesta no se guarda, pero el intento sigue abierto.
+        return Response(
+            {'detalle': 'La evaluación no está disponible en este momento.'}, status=400
+        )
 
     pregunta_id = request.data.get('pregunta')
     opcion_id = request.data.get('opcion')
@@ -113,13 +134,15 @@ def responder_pregunta(request, intento_id):
 @api_view(['POST'])
 def finalizar_intento(request, intento_id):
     """Cierra el intento, calcula la calificacion y entrega el resultado."""
-    intento = get_object_or_404(IntentoEvaluacion, id=intento_id, alumno=request.user)
+    intento = get_object_or_404(
+        IntentoEvaluacion.objects.select_related('evaluacion'),
+        id=intento_id, alumno=request.user,
+    )
+    # Si entrega justo cuando el plazo vencia, el cierre ya lo hizo el servicio.
+    poner_al_dia(intento.evaluacion)
+    intento.refresh_from_db()
 
-    if intento.estado != IntentoEvaluacion.Estado.FINALIZADO:
-        intento.estado = IntentoEvaluacion.Estado.FINALIZADO
-        intento.fecha_fin = timezone.now()
-        intento.calificacion = intento.calcular_calificacion()
-        intento.save()
+    cerrar_intento(intento)
 
     return Response(construir_resultado(intento))
 
@@ -149,9 +172,19 @@ def estado_intento(request, intento_id):
     """Sondeo ligero para saber si la evaluacion ya fue finalizada.
 
     La aplicacion del alumno lo consulta cada cierto tiempo para enterarse
-    cuando el profesor termina la evaluacion antes de tiempo.
+    cuando el profesor termina la evaluacion antes de tiempo. Es tambien el
+    sondeo el que cierra el intento cuando se acaba el plazo mientras el alumno
+    tiene la pantalla abierta, porque nadie mas vigila el reloj.
     """
-    intento = get_object_or_404(IntentoEvaluacion, id=intento_id, alumno=request.user)
+    intento = get_object_or_404(
+        IntentoEvaluacion.objects.select_related('evaluacion'),
+        id=intento_id, alumno=request.user,
+    )
+    evaluacion = poner_al_dia(intento.evaluacion)
+    intento.refresh_from_db()
+
+    finalizada = intento.estado == IntentoEvaluacion.Estado.FINALIZADO
     return Response({
-        'finalizada': intento.estado == IntentoEvaluacion.Estado.FINALIZADO,
+        'finalizada': finalizada,
+        'motivo': motivo_cierre(evaluacion) if finalizada else '',
     })
