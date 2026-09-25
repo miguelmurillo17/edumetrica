@@ -1,0 +1,14 @@
+Hola {{ alumno.nombre }}:
+
+Tu profesor programó una evaluación nueva para tu grupo.
+
+Evaluación: {{ evaluacion.titulo }}
+Disciplina: {{ evaluacion.materia.nombre }}
+Preguntas: {{ evaluacion.numero_preguntas }}
+Disponible: del {{ inicio }} al {{ fin }}
+
+Solo podrás responderla dentro de ese horario, así que entra con tiempo:
+
+{{ url }}
+
+Edumétrica

@@ -19,7 +19,7 @@ from apps.catalogo.models import Pregunta, OpcionRespuesta
 
 from .models import Evaluacion, IntentoEvaluacion, RespuestaAlumno
 from .servicios import (
-    cerrar_intento, construir_resultado, motivo_cierre, poner_al_dia,
+    construir_resultado, entregar_intento, motivo_cierre, poner_al_dia,
 )
 
 
@@ -142,7 +142,7 @@ def finalizar_intento(request, intento_id):
     poner_al_dia(intento.evaluacion)
     intento.refresh_from_db()
 
-    cerrar_intento(intento)
+    entregar_intento(intento)
 
     return Response(construir_resultado(intento))
 

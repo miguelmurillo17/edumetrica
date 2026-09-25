@@ -3,7 +3,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 
-from .models import Persona
+from .models import Notificacion, Persona
 
 
 @admin.register(Persona)
@@ -34,3 +34,13 @@ class PersonaAdmin(UserAdmin):
             'fields': ('correo', 'nombre', 'apellido', 'rol', 'password1', 'password2'),
         }),
     )
+
+
+@admin.register(Notificacion)
+class NotificacionAdmin(admin.ModelAdmin):
+    """Consulta de los avisos que ha mandado el sistema."""
+
+    list_display = ('titulo', 'persona', 'estado', 'fecha_creacion')
+    list_filter = ('estado',)
+    search_fields = ('titulo', 'descripcion', 'persona__correo')
+    ordering = ('-fecha_creacion',)

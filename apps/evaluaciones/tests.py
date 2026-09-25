@@ -13,22 +13,24 @@ llevaba.
 from datetime import date, timedelta
 from io import StringIO
 
+from django.core import mail
 from django.core.management import call_command
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 from django.utils import timezone
 
 from apps.catalogo.models import (
     Categoria, Institucion, Materia, Nivel, OpcionRespuesta, Pregunta,
 )
-from apps.usuarios.models import Persona
+from apps.usuarios.models import Notificacion, Persona
 
+from .avisos import avisar_evaluacion_programada
 from .forms import GrupoForm
 from .models import (
     AsignacionDocente, CategoriaEvaluacion, Evaluacion, Grupo,
     IntentoEvaluacion, RespuestaAlumno,
 )
-from .servicios import actualizar_estados, cerrar_evaluacion
+from .servicios import actualizar_estados, cerrar_evaluacion, entregar_intento
 
 
 class BaseEvaluacionesTest(TestCase):
@@ -993,3 +995,214 @@ class PresentarEvaluacionTest(BaseEvaluacionesTest):
         self.client.force_login(self.alumno)
 
         self.assertEqual(self.presentar().status_code, 200)
+
+
+@override_settings(CORREO_EN_HILO=False)
+class AvisosTest(BaseEvaluacionesTest):
+    """Los cuatro momentos en los que el sistema interrumpe a alguien.
+
+    El correo se manda en un hilo, asi que aqui se apaga esa opcion: lo que se
+    comprueba es que el mensaje se arme y salga, no cuando termina el hilo.
+    """
+
+    def setUp(self):
+        super().setUp()
+        self.otro_alumno = Persona.objects.create_user(
+            correo='otro@prueba.mx', nombre='Dani', apellido='Mora',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+        self.grupo.alumnos.add(self.otro_alumno)
+        self.preguntas = [self.crear_pregunta() for _ in range(4)]
+
+    def avisos_de(self, persona):
+        return Notificacion.objects.filter(persona=persona)
+
+    def evaluacion_vencida(self):
+        ahora = timezone.now()
+        return self.crear_evaluacion(
+            preguntas=self.preguntas,
+            inicio=ahora - timedelta(hours=2),
+            fin=ahora - timedelta(minutes=1),
+        )
+
+    def test_programar_avisa_a_los_alumnos_del_grupo(self):
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        avisar_evaluacion_programada(evaluacion)
+
+        for alumno in (self.alumno, self.otro_alumno):
+            aviso = self.avisos_de(alumno).get()
+            self.assertEqual(aviso.titulo, 'Nueva evaluación programada')
+            self.assertEqual(aviso.url, reverse('evaluaciones:panel_alumno'))
+
+    def test_al_profesor_no_le_llega_el_aviso_de_su_propia_evaluacion(self):
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        avisar_evaluacion_programada(evaluacion)
+
+        self.assertFalse(self.avisos_de(self.profesor).exists())
+
+    def test_programar_manda_un_correo_por_alumno(self):
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        avisar_evaluacion_programada(evaluacion)
+
+        self.assertEqual(len(mail.outbox), 2)
+        destinatarios = sorted(sum((m.to for m in mail.outbox), []))
+        self.assertEqual(
+            destinatarios, ['alumno@prueba.mx', 'otro@prueba.mx']
+        )
+
+    def test_el_correo_no_revela_las_direcciones_de_los_companeros(self):
+        # Un solo mensaje con todo el grupo en copia repartiria los correos de
+        # los alumnos entre sus companeros.
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        avisar_evaluacion_programada(evaluacion)
+
+        for mensaje in mail.outbox:
+            self.assertEqual(len(mensaje.to), 1)
+            self.assertFalse(mensaje.cc)
+            self.assertFalse(mensaje.bcc)
+
+    @override_settings(SITIO_URL='https://edumetrica.mx')
+    def test_el_correo_lleva_un_enlace_con_el_dominio_configurado(self):
+        # Una ruta relativa no sirve fuera del navegador, y en produccion el
+        # enlace no puede apuntar a la direccion de desarrollo.
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        avisar_evaluacion_programada(evaluacion)
+
+        self.assertIn('https://edumetrica.mx/alumno/', mail.outbox[0].body)
+
+    def test_el_asunto_va_en_una_sola_linea(self):
+        # Un salto de linea colado en la plantilla partiria la cabecera.
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        avisar_evaluacion_programada(evaluacion)
+
+        self.assertNotIn('\n', mail.outbox[0].subject)
+
+    def test_programar_desde_la_pantalla_avisa_y_manda_correo(self):
+        # El camino completo: lo que de verdad hace el profesor.
+        self.client.force_login(self.profesor)
+        ahora = timezone.now()
+        envio = {
+            'titulo': 'Diagnóstico',
+            'grupo': self.grupo.id,
+            'materia': self.materia.id,
+            'fecha_inicio': timezone.localtime(ahora).strftime('%Y-%m-%dT%H:%M'),
+            'fecha_fin': timezone.localtime(
+                ahora + timedelta(hours=1)
+            ).strftime('%Y-%m-%dT%H:%M'),
+            'categorias_elegidas-TOTAL_FORMS': '1',
+            'categorias_elegidas-INITIAL_FORMS': '0',
+            'categorias_elegidas-MIN_NUM_FORMS': '0',
+            'categorias_elegidas-MAX_NUM_FORMS': '1000',
+            'categorias_elegidas-0-categoria': self.categoria.id,
+            'categorias_elegidas-0-numero_preguntas': '2',
+        }
+
+        respuesta = self.client.post(
+            reverse('evaluaciones:crear_evaluacion'), envio
+        )
+
+        self.assertEqual(respuesta.status_code, 302)
+        self.assertEqual(Notificacion.objects.count(), 2)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_el_vencimiento_avisa_al_profesor(self):
+        evaluacion = self.evaluacion_vencida()
+
+        actualizar_estados()
+
+        aviso = self.avisos_de(self.profesor).get()
+        self.assertEqual(aviso.titulo, 'Una evaluación llegó a su fin')
+        self.assertEqual(
+            aviso.url,
+            reverse('evaluaciones:detalle_evaluacion', args=[evaluacion.id]),
+        )
+
+    def test_finalizar_anticipadamente_no_avisa_al_profesor(self):
+        # La cerro el: avisarle de su propia decision seria ruido.
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+
+        cerrar_evaluacion(evaluacion, anticipada=True)
+
+        self.assertFalse(self.avisos_de(self.profesor).exists())
+
+    def test_al_alumno_que_se_quedo_a_medias_se_le_avisa(self):
+        evaluacion = self.evaluacion_vencida()
+        intento = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno
+        )
+        self.responder(intento, self.preguntas[0], True)
+
+        actualizar_estados()
+
+        aviso = self.avisos_de(self.alumno).get()
+        self.assertEqual(aviso.titulo, 'Ya puedes ver tu resultado')
+
+    def test_al_que_ya_habia_entregado_no_se_le_avisa(self):
+        # Ese vio su resultado en pantalla al terminar.
+        evaluacion = self.evaluacion_vencida()
+        IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=50,
+        )
+
+        actualizar_estados()
+
+        self.assertFalse(self.avisos_de(self.alumno).exists())
+
+    def test_al_que_nunca_entro_no_se_le_avisa(self):
+        self.evaluacion_vencida()
+
+        actualizar_estados()
+
+        self.assertFalse(self.avisos_de(self.otro_alumno).exists())
+
+    def test_cuando_el_ultimo_alumno_entrega_se_avisa_al_profesor(self):
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+        primero = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno
+        )
+        segundo = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.otro_alumno
+        )
+
+        entregar_intento(primero)
+        self.assertFalse(self.avisos_de(self.profesor).exists())
+
+        entregar_intento(segundo)
+
+        aviso = self.avisos_de(self.profesor).get()
+        self.assertEqual(aviso.titulo, 'Tu grupo terminó la evaluación')
+
+    def test_no_se_avisa_del_grupo_si_falta_alguien_por_entrar(self):
+        evaluacion = self.crear_evaluacion(preguntas=self.preguntas)
+        intento = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno
+        )
+
+        entregar_intento(intento)
+
+        self.assertFalse(self.avisos_de(self.profesor).exists())
+
+    def test_entregar_el_ultimo_de_una_cerrada_no_avisa(self):
+        # Si la evaluacion ya esta finalizada, el profesor no puede hacer nada
+        # con la noticia: el aviso de cierre ya se le mando.
+        evaluacion = self.crear_evaluacion(
+            preguntas=self.preguntas, estado=Evaluacion.Estado.FINALIZADA
+        )
+        intento = IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.alumno
+        )
+        IntentoEvaluacion.objects.create(
+            evaluacion=evaluacion, alumno=self.otro_alumno,
+            estado=IntentoEvaluacion.Estado.FINALIZADO, calificacion=50,
+        )
+
+        entregar_intento(intento)
+
+        self.assertFalse(self.avisos_de(self.profesor).exists())

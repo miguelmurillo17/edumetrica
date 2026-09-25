@@ -5,6 +5,7 @@ Modelo de usuario del sistema. Toda persona que entra a Edumetrica
 
 from datetime import date
 from django.db import models
+from django.utils import timezone
 from django.contrib.auth.models import AbstractBaseUser, PermissionsMixin, BaseUserManager
 from django.core.exceptions import ValidationError
 
@@ -120,3 +121,57 @@ class Persona(AbstractBaseUser, PermissionsMixin):
     @property
     def es_alumno(self):
         return self.rol == self.Rol.ALUMNO
+
+
+class Notificacion(models.Model):
+    """Aviso dirigido a una persona, para la campanita de la barra superior.
+
+    Se guarda generica a proposito -un titulo, una descripcion breve y la
+    direccion a la que lleva- y sin llave foranea a la evaluacion que la
+    provoco: asi el dia que haya que avisar de algo del catalogo o de una
+    cuenta, el modelo ya sirve. Quien la crea es quien sabe de que habla, y
+    para eso estan las funciones de apps.usuarios.servicios.
+    """
+
+    class Estado(models.TextChoices):
+        ENVIADA = 'enviada', 'Enviada'
+        LEIDA = 'leida', 'Leída'
+
+    persona = models.ForeignKey(
+        Persona,
+        on_delete=models.CASCADE,
+        related_name='notificaciones',
+    )
+    titulo = models.CharField(max_length=150)
+    descripcion = models.CharField(max_length=300, blank=True)
+    # Direccion a la que lleva al abrirla, relativa al sitio. Se guarda ya
+    # resuelta porque el modelo no sabe de que habla cada notificacion.
+    url = models.CharField(max_length=200, blank=True)
+    estado = models.CharField(
+        max_length=10,
+        choices=Estado.choices,
+        default=Estado.ENVIADA,
+    )
+    fecha_creacion = models.DateTimeField(auto_now_add=True)
+    fecha_lectura = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = 'notificación'
+        verbose_name_plural = 'notificaciones'
+        # La mas reciente primero, que es como se lee una campanita.
+        ordering = ['-fecha_creacion']
+        # El contador de la campanita se consulta en cada pantalla del sistema.
+        indexes = [
+            models.Index(fields=['persona', 'estado']),
+        ]
+
+    def __str__(self):
+        return f'{self.persona.nombre_completo} - {self.titulo}'
+
+    def marcar_leida(self):
+        """Da la notificacion por leida, si no lo estaba ya."""
+        if self.estado == self.Estado.LEIDA:
+            return
+        self.estado = self.Estado.LEIDA
+        self.fecha_lectura = timezone.now()
+        self.save(update_fields=['estado', 'fecha_lectura'])

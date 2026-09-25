@@ -13,6 +13,7 @@ from .models import Grupo, Evaluacion, IntentoEvaluacion
 from .forms import (
     EvaluacionForm, CategoriaEvaluacionFormSet, GrupoForm, AsignacionDocenteFormSet,
 )
+from .avisos import avisar_evaluacion_programada
 from .servicios import actualizar_estados, cerrar_evaluacion, poner_al_dia
 
 
@@ -293,6 +294,9 @@ def crear_evaluacion(request):
             # El total de la evaluacion es la suma de todos los renglones.
             evaluacion.numero_preguntas = len(preguntas)
             evaluacion.save(update_fields=['numero_preguntas'])
+
+            # Los alumnos del grupo se enteran por la campanita y por correo.
+            avisar_evaluacion_programada(evaluacion)
 
             messages.success(request, 'La evaluación se programó correctamente.')
             return redirect('evaluaciones:lista_evaluaciones')

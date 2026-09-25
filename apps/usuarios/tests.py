@@ -23,7 +23,7 @@ from django.urls import reverse
 from django.utils.encoding import force_bytes
 from django.utils.http import urlsafe_base64_encode
 
-from .models import Persona
+from .models import Notificacion, Persona
 
 # Las reglas de contrasena se apagan en desarrollo (ver settings.py); las
 # pruebas que las comprueban las fijan aqui para no depender de DEBUG.
@@ -420,3 +420,115 @@ class ValidadoresTest(TestCase):
 
     def test_una_buena_pasa(self):
         self.assertIsNone(validate_password('Trigonometria2027', self.persona))
+
+
+class NotificacionesTest(TestCase):
+    """La campanita de la barra superior y la lista de avisos."""
+
+    def setUp(self):
+        self.persona = Persona.objects.create_user(
+            correo='alumno@prueba.mx', nombre='Beto', apellido='Lara',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+        self.otra = Persona.objects.create_user(
+            correo='otra@prueba.mx', nombre='Ana', apellido='Ruiz',
+            password='Edumetrica2026', rol=Persona.Rol.ALUMNO,
+        )
+        self.client.force_login(self.persona)
+
+    def crear_aviso(self, persona=None, **extras):
+        datos = {
+            'persona': persona or self.persona,
+            'titulo': 'Nueva evaluación programada',
+            'descripcion': 'Diagnóstico de Matemáticas.',
+            'url': '/alumno/',
+        }
+        datos.update(extras)
+        return Notificacion.objects.create(**datos)
+
+    def abrir(self, aviso):
+        return self.client.get(
+            reverse('usuarios:abrir_notificacion', args=[aviso.id])
+        )
+
+    def test_la_campanita_cuenta_las_sin_leer(self):
+        self.crear_aviso()
+        self.crear_aviso()
+        self.crear_aviso(estado=Notificacion.Estado.LEIDA)
+
+        respuesta = self.client.get(reverse('usuarios:notificaciones'))
+
+        self.assertEqual(respuesta.context['notificaciones_sin_leer'], 2)
+
+    def test_la_campanita_no_cuenta_las_de_otra_persona(self):
+        self.crear_aviso(persona=self.otra)
+
+        respuesta = self.client.get(reverse('usuarios:notificaciones'))
+
+        self.assertEqual(respuesta.context['notificaciones_sin_leer'], 0)
+
+    def test_la_campanita_solo_trae_las_cinco_mas_recientes(self):
+        for _ in range(7):
+            self.crear_aviso()
+
+        respuesta = self.client.get(reverse('usuarios:notificaciones'))
+
+        self.assertEqual(len(respuesta.context['notificaciones_recientes']), 5)
+
+    def test_abrirla_la_marca_leida_y_lleva_a_su_destino(self):
+        aviso = self.crear_aviso()
+
+        respuesta = self.abrir(aviso)
+
+        self.assertRedirects(respuesta, '/alumno/')
+        aviso.refresh_from_db()
+        self.assertEqual(aviso.estado, Notificacion.Estado.LEIDA)
+        self.assertIsNotNone(aviso.fecha_lectura)
+
+    def test_una_direccion_de_fuera_no_saca_del_sistema(self):
+        # La direccion la escribe el sistema, pero el administrador puede
+        # editarla desde el panel: la campanita no debe servir de trampolin.
+        aviso = self.crear_aviso(url='https://ejemplo.mx/')
+
+        respuesta = self.abrir(aviso)
+
+        self.assertRedirects(respuesta, reverse('usuarios:notificaciones'))
+
+    def test_no_se_abre_la_notificacion_de_otra_persona(self):
+        ajena = self.crear_aviso(persona=self.otra)
+
+        respuesta = self.abrir(ajena)
+
+        self.assertEqual(respuesta.status_code, 404)
+        ajena.refresh_from_db()
+        self.assertEqual(ajena.estado, Notificacion.Estado.ENVIADA)
+
+    def test_marcar_todas_como_leidas(self):
+        self.crear_aviso()
+        self.crear_aviso()
+
+        self.client.post(reverse('usuarios:marcar_notificaciones_leidas'))
+
+        self.assertEqual(
+            self.persona.notificaciones.filter(
+                estado=Notificacion.Estado.ENVIADA
+            ).count(),
+            0,
+        )
+
+    def test_marcar_todas_no_toca_las_de_otra_persona(self):
+        ajena = self.crear_aviso(persona=self.otra)
+
+        self.client.post(reverse('usuarios:marcar_notificaciones_leidas'))
+
+        ajena.refresh_from_db()
+        self.assertEqual(ajena.estado, Notificacion.Estado.ENVIADA)
+
+    def test_la_lista_solo_muestra_las_propias(self):
+        self.crear_aviso(titulo='Aviso propio')
+        self.crear_aviso(persona=self.otra, titulo='Aviso ajeno')
+
+        respuesta = self.client.get(reverse('usuarios:notificaciones'))
+
+        self.assertContains(respuesta, 'Aviso propio')
+        self.assertNotContains(respuesta, 'Aviso ajeno')

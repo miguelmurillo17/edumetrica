@@ -17,6 +17,33 @@
         <div class="marca">Edumétrica</div>
         {% endif %}
         <nav class="menu">
+            {% comment %}
+            La campanita se abre con <details> y no con JavaScript, igual que
+            el procedimiento plegado del resultado del alumno.
+            {% endcomment %}
+            <details class="campana">
+                <summary class="campana-boton" title="Notificaciones" aria-label="Notificaciones">
+                    <svg viewBox="0 0 24 24" width="20" height="20" fill="currentColor" aria-hidden="true">
+                        <path d="M12 22a2.5 2.5 0 0 0 2.45-2h-4.9A2.5 2.5 0 0 0 12 22zm6.5-6v-5a6.5 6.5 0 0 0-5-6.33V4a1.5 1.5 0 0 0-3 0v.67A6.5 6.5 0 0 0 5.5 11v5l-1.7 1.7a1 1 0 0 0 .7 1.3h15a1 1 0 0 0 .7-1.3L18.5 16z"/>
+                    </svg>
+                    {% if notificaciones_sin_leer %}
+                    <span class="campana-contador">{{ notificaciones_sin_leer }}</span>
+                    {% endif %}
+                </summary>
+                <div class="campana-panel">
+                    {% for aviso in notificaciones_recientes %}
+                    <a class="campana-aviso {% if aviso.estado == 'enviada' %}sin-leer{% endif %}"
+                       href="{% url 'usuarios:abrir_notificacion' aviso.id %}">
+                        <span class="campana-titulo">{{ aviso.titulo }}</span>
+                        <span class="campana-descripcion">{{ aviso.descripcion }}</span>
+                        <span class="campana-fecha">{{ aviso.fecha_creacion|date:"d/m/Y H:i" }}</span>
+                    </a>
+                    {% empty %}
+                    <p class="campana-vacia">No tienes notificaciones.</p>
+                    {% endfor %}
+                    <a class="campana-todas" href="{% url 'usuarios:notificaciones' %}">Ver todas</a>
+                </div>
+            </details>
             <span class="usuario">{{ user.nombre_completo }}</span>
             <form method="post" action="{% url 'usuarios:cerrar_sesion' %}" class="forma-salir" data-confirmar="¿Seguro que quieres cerrar la sesión?">
                 {% csrf_token %}

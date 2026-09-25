@@ -65,6 +65,20 @@ urlpatterns = [
     # Punto de entrada que reparte a cada quien a su panel.
     path('', views.inicio, name='inicio'),
 
+    # Notificaciones: la campanita de la barra superior lleva a la lista, y
+    # cada aviso pasa por "abrir" para quedar marcado como leido.
+    path('notificaciones/', views.lista_notificaciones, name='notificaciones'),
+    path(
+        'notificaciones/<int:notificacion_id>/abrir/',
+        views.abrir_notificacion,
+        name='abrir_notificacion',
+    ),
+    path(
+        'notificaciones/leidas/',
+        views.marcar_notificaciones_leidas,
+        name='marcar_notificaciones_leidas',
+    ),
+
     # Panel del administrador y alta/edicion de personas.
     path('administracion/', views.panel_administrador, name='panel_administrador'),
     path('personas/', views.lista_personas, name='lista_personas'),

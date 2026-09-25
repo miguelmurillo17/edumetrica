@@ -3,11 +3,12 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render, get_object_or_404
+from django.utils import timezone
 
 from .decoradores import roles_permitidos
 from .forms import PersonaCreacionForm, PersonaEdicionForm
 from .listados import resolver_orden
-from .models import Persona
+from .models import Notificacion, Persona
 
 # Columnas por las que se puede ordenar el listado de personas.
 ORDEN_PERSONAS = {
@@ -122,3 +123,39 @@ def editar_persona(request, persona_id):
 
     contexto = {'formulario': formulario, 'persona': persona}
     return render(request, 'usuarios/formulario_persona.html', contexto)
+
+
+@login_required
+def lista_notificaciones(request):
+    """Todas las notificaciones de la persona, la mas reciente primero."""
+    return render(request, 'usuarios/lista_notificaciones.html', {
+        'notificaciones': request.user.notificaciones.all(),
+    })
+
+
+@login_required
+def abrir_notificacion(request, notificacion_id):
+    """Da la notificacion por leida y lleva a donde apunta."""
+    aviso = get_object_or_404(
+        Notificacion, id=notificacion_id, persona=request.user
+    )
+    aviso.marcar_leida()
+
+    # La direccion la escribe el sistema, pero se revisa de todos modos: una
+    # ruta propia empieza con una sola diagonal, y asi la campanita no puede
+    # acabar mandando a un sitio de fuera si alguien edita el aviso a mano.
+    propia = aviso.url.startswith('/') and not aviso.url.startswith('//')
+    return redirect(aviso.url if propia else 'usuarios:notificaciones')
+
+
+@login_required
+def marcar_notificaciones_leidas(request):
+    """Da por leidas de una vez todas las que quedaban pendientes."""
+    if request.method == 'POST':
+        request.user.notificaciones.filter(
+            estado=Notificacion.Estado.ENVIADA
+        ).update(
+            estado=Notificacion.Estado.LEIDA, fecha_lectura=timezone.now()
+        )
+
+    return redirect('usuarios:notificaciones')

@@ -70,6 +70,9 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # La campanita de la barra superior sale en todas las
+                # pantallas, asi que sus datos no se pasan vista por vista.
+                'apps.usuarios.contexto.notificaciones',
             ],
         },
     },
@@ -153,6 +156,17 @@ else:
     EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='no-responder@edumetrica.mx')
+
+# Direccion publica del sitio. Un correo se lee fuera del navegador, asi que
+# sus enlaces tienen que llevar el dominio completo; en produccion se apunta
+# al dominio real y no a la direccion de desarrollo.
+SITIO_URL = config('SITIO_URL', default='http://127.0.0.1:8000')
+
+# Los correos se mandan en un hilo aparte para no dejar esperando a quien
+# programa una evaluacion, que con un grupo grande serian decenas de entregas.
+# Se puede apagar para verlos en orden en la consola, y las pruebas lo apagan
+# para no depender de cuando termina el hilo.
+CORREO_EN_HILO = config('CORREO_EN_HILO', default=True, cast=bool)
 
 
 # Generacion de preguntas con inteligencia artificial.

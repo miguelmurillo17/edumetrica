@@ -1,0 +1,37 @@
+{% extends 'base.html' %}
+
+{% block titulo %}Notificaciones - Edumétrica{% endblock %}
+
+{% block contenido %}
+<section class="panel">
+    <div class="encabezado-lista">
+        <div class="titulo-con-volver">
+            {% url 'usuarios:inicio' as volver_url %}
+            {% include 'incluye/boton_volver.html' with url=volver_url %}
+            <h1>Notificaciones</h1>
+        </div>
+        {% if notificaciones_sin_leer %}
+        <form method="post" action="{% url 'usuarios:marcar_notificaciones_leidas' %}">
+            {% csrf_token %}
+            <button type="submit" class="boton-secundario boton-compacto">Marcar todas como leídas</button>
+        </form>
+        {% endif %}
+    </div>
+
+    {% if notificaciones %}
+    <ul class="lista-avisos">
+        {% for aviso in notificaciones %}
+        <li class="aviso {% if aviso.estado == 'enviada' %}sin-leer{% endif %}">
+            <a class="aviso-enlace" href="{% url 'usuarios:abrir_notificacion' aviso.id %}">
+                <span class="aviso-titulo">{{ aviso.titulo }}</span>
+                <span class="aviso-descripcion">{{ aviso.descripcion }}</span>
+            </a>
+            <span class="aviso-fecha">{{ aviso.fecha_creacion|date:"d/m/Y H:i" }}</span>
+        </li>
+        {% endfor %}
+    </ul>
+    {% else %}
+    <p>No tienes notificaciones.</p>
+    {% endif %}
+</section>
+{% endblock %}

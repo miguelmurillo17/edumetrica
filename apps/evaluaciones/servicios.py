@@ -16,6 +16,9 @@ tambien ocurra cuando nadie tiene el navegador abierto.
 
 from django.utils import timezone
 
+from .avisos import (
+    avisar_evaluacion_cerrada, avisar_grupo_termino, avisar_resultado_disponible,
+)
 from .models import Evaluacion, IntentoEvaluacion
 
 
@@ -82,8 +85,32 @@ def cerrar_intentos_en_curso(evaluacion, ahora=None):
         cerrar_intento(intento, ahora)
         for intento in evaluacion.intentos.filter(
             estado=IntentoEvaluacion.Estado.EN_CURSO
-        )
+        ).select_related('alumno')
     ]
+
+
+def entregar_intento(intento):
+    """Cierra el intento que el alumno entrega por su cuenta.
+
+    Se distingue de cerrar_intento porque aqui hay alguien decidiendo terminar:
+    si con esta entrega ya no queda nadie presentando y la evaluacion sigue
+    abierta, al profesor le sirve enterarse para poder cerrarla con tranquilidad.
+    """
+    if intento.estado == IntentoEvaluacion.Estado.FINALIZADO:
+        return intento
+
+    cerrar_intento(intento)
+
+    evaluacion = intento.evaluacion
+    if evaluacion.estado != Evaluacion.Estado.FINALIZADA:
+        total = evaluacion.grupo.alumnos.count()
+        entregados = evaluacion.intentos.filter(
+            estado=IntentoEvaluacion.Estado.FINALIZADO
+        ).count()
+        if total and entregados >= total:
+            avisar_grupo_termino(evaluacion, total)
+
+    return intento
 
 
 def cerrar_evaluacion(evaluacion, ahora=None, anticipada=False):
@@ -100,7 +127,25 @@ def cerrar_evaluacion(evaluacion, ahora=None, anticipada=False):
     evaluacion.estado = Evaluacion.Estado.FINALIZADA
     evaluacion.finalizada_anticipadamente = anticipada
     evaluacion.save(update_fields=['estado', 'finalizada_anticipadamente'])
-    return cerrar_intentos_en_curso(evaluacion, ahora)
+
+    cerrados = cerrar_intentos_en_curso(evaluacion, ahora)
+
+    # A quien se le cerro el intento sin haber entregado se le avisa que su
+    # resultado ya esta listo, porque no estaba mirando la pantalla.
+    avisar_resultado_disponible(
+        evaluacion, [intento.alumno for intento in cerrados]
+    )
+
+    # Al profesor se le avisa solo cuando fue el plazo el que cerro la
+    # evaluacion: si la cerro el, ya lo sabe.
+    if not anticipada:
+        avisar_evaluacion_cerrada(
+            evaluacion,
+            evaluacion.intentos.count(),
+            evaluacion.grupo.alumnos.count(),
+        )
+
+    return cerrados
 
 
 def actualizar_estados(consulta=None):
