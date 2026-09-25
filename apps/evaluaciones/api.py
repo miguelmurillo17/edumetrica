@@ -221,4 +221,9 @@ def estado_intento(request, intento_id):
     return Response({
         'finalizada': finalizada,
         'motivo': motivo_cierre(evaluacion) if finalizada else '',
+        # La cuenta regresiva del navegador corre sola entre sondeo y sondeo,
+        # pero se vuelve a ajustar con este numero: asi no se va acumulando la
+        # diferencia, y un reloj adelantado en la maquina del alumno no le
+        # regala tiempo.
+        'segundos_restantes': evaluacion.segundos_restantes(),
     })

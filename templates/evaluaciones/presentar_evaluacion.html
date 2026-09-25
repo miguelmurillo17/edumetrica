@@ -16,6 +16,14 @@
 
     <!-- Presentando la evaluacion -->
     <div v-else-if="estado === 'presentando'">
+
+        <!-- Cuenta regresiva de los ultimos minutos. No aparece antes para no
+             meterle prisa al alumno durante toda la evaluacion. -->
+        <div v-if="mostrarContador" class="contador-tiempo" :class="{ urgente: contadorUrgente }">
+            Te queda [[ tiempoFormateado ]] para terminar la evaluación.
+            Tus respuestas ya están guardadas.
+        </div>
+
         <header class="quiz-encabezado">
             <h1>[[ titulo ]]</h1>
             <p>
@@ -114,8 +122,15 @@
     const CSRF_TOKEN = "{{ csrf_token }}";
     const URL_PANEL = "{% url 'evaluaciones:panel_alumno' %}";
 
-    // Cada cuanto se le pregunta al servidor si el profesor ya finalizo.
+    // Cada cuanto se le pregunta al servidor si la evaluacion ya cerro. Ese
+    // mismo sondeo trae el tiempo que queda y reajusta la cuenta regresiva.
     const MILISEGUNDOS_SONDEO = 8000;
+
+    // Cuando aparece la cuenta regresiva: en los ultimos tres minutos.
+    const SEGUNDOS_DE_AVISO = 180;
+
+    // Cuando se pinta en rojo, ya para levantarse de la silla.
+    const SEGUNDOS_URGENTES = 60;
 
     // Funcion comun para hablar con los endpoints del servidor.
     async function peticion(url, cuerpo, metodo = 'POST') {
@@ -151,6 +166,10 @@
                 // 'guardando', 'guardado' o 'error'.
                 guardado: {},
                 horaCierre: '',
+                // Segundos de plazo que quedan. Corre solo cada segundo y el
+                // sondeo lo vuelve a poner en hora.
+                segundosRestantes: null,
+                intervaloContador: null,
                 enviando: false,
                 resultado: null,
                 intervaloSondeo: null,
@@ -178,6 +197,20 @@
             guardadoActual() {
                 return this.preguntaActual ? this.guardado[this.preguntaActual.id] : '';
             },
+            mostrarContador() {
+                return this.segundosRestantes !== null
+                    && this.segundosRestantes <= SEGUNDOS_DE_AVISO;
+            },
+            contadorUrgente() {
+                return this.segundosRestantes !== null
+                    && this.segundosRestantes <= SEGUNDOS_URGENTES;
+            },
+            tiempoFormateado() {
+                const segundos = Math.max(0, this.segundosRestantes || 0);
+                const minutos = Math.floor(segundos / 60);
+                const sueltos = segundos % 60;
+                return `${minutos}:${String(sueltos).padStart(2, '0')}`;
+            },
             progreso() {
                 if (this.preguntas.length === 0) {
                     return 0;
@@ -204,10 +237,12 @@
                     this.respuestas = datos.respuestas_previas || {};
                     // Se reanuda donde se quedo, no en la primera de todas.
                     this.indice = datos.indice_inicial || 0;
+                    this.segundosRestantes = datos.segundos_restantes;
                     this.calcularHoraCierre(datos.segundos_restantes);
                     this.estado = 'presentando';
                     // Se empieza a vigilar si la evaluacion se cierra.
                     this.intervaloSondeo = setInterval(this.revisarEstado, MILISEGUNDOS_SONDEO);
+                    this.intervaloContador = setInterval(this.descontarSegundo, 1000);
                 } catch (error) {
                     this.mensajeError = error.message;
                     this.estado = 'error';
@@ -220,9 +255,12 @@
                     return;
                 }
                 const cierre = new Date(Date.now() + segundos * 1000);
+                // En 24 horas, como se ven las fechas en el resto del sistema;
+                // el formato de es-MX saldria con "p.m." y desentonaria.
                 this.horaCierre = cierre.toLocaleTimeString('es-MX', {
                     hour: '2-digit',
                     minute: '2-digit',
+                    hour12: false,
                 });
             },
             async seleccionar(opcionId) {
@@ -273,13 +311,41 @@
                     if (datos.finalizada) {
                         this.motivoCierre = datos.motivo || 'tiempo';
                         await this.mostrarResultado();
+                        return;
+                    }
+                    // El contador corre solo entre sondeo y sondeo; aqui se
+                    // vuelve a poner en hora con lo que dice el servidor.
+                    if (typeof datos.segundos_restantes === 'number') {
+                        this.segundosRestantes = datos.segundos_restantes;
                     }
                 } catch (error) {
                     // Si falla el sondeo no interrumpimos al alumno, se reintenta luego.
                 }
             },
+            descontarSegundo() {
+                if (this.segundosRestantes === null) {
+                    return;
+                }
+                this.segundosRestantes -= 1;
+                if (this.segundosRestantes <= 0) {
+                    this.segundosRestantes = 0;
+                    this.terminarPorTiempo();
+                }
+            },
+            async terminarPorTiempo() {
+                // Se entrega sola al agotarse el plazo. El servidor ya cierra
+                // el intento por su cuenta -y rechaza cualquier respuesta que
+                // llegue tarde-, asi que esto no es lo que hace cumplir el
+                // tiempo: es para que el alumno vea su resultado en lugar de
+                // quedarse mirando una pantalla que ya no guarda nada.
+                if (this.enviando) {
+                    return;
+                }
+                this.motivoCierre = 'tiempo';
+                await this.entregar();
+            },
             async mostrarResultado() {
-                this.detenerSondeo();
+                this.detenerRelojes();
                 try {
                     this.resultado = await peticion(`/api/alumno/intentos/${this.intentoId}/resultado/`, null, 'GET');
                     this.estado = 'resultado';
@@ -298,8 +364,11 @@
                         return;
                     }
                 }
+                await this.entregar();
+            },
+            async entregar() {
                 this.enviando = true;
-                this.detenerSondeo();
+                this.detenerRelojes();
                 try {
                     this.resultado = await peticion(`/api/alumno/intentos/${this.intentoId}/finalizar/`);
                     this.estado = 'resultado';
@@ -310,10 +379,14 @@
                     this.enviando = false;
                 }
             },
-            detenerSondeo() {
+            detenerRelojes() {
                 if (this.intervaloSondeo) {
                     clearInterval(this.intervaloSondeo);
                     this.intervaloSondeo = null;
+                }
+                if (this.intervaloContador) {
+                    clearInterval(this.intervaloContador);
+                    this.intervaloContador = null;
                 }
             },
         },
@@ -321,7 +394,7 @@
             this.iniciar();
         },
         beforeUnmount() {
-            this.detenerSondeo();
+            this.detenerRelojes();
         },
     }).mount('#app');
 </script>

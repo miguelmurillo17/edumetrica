@@ -1471,3 +1471,26 @@ mark.resaltado {
     gap: 0.6rem;
     flex-wrap: wrap;
 }
+
+/* Cuenta regresiva de los ultimos minutos de la evaluacion. Va pegada arriba
+   con position sticky y no fija a la ventana, porque la barra superior del
+   sistema tampoco lo esta: asi acompana al contenido sin taparlo. */
+.contador-tiempo {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    margin-bottom: 1rem;
+    padding: 0.7rem 1rem;
+    border-radius: var(--radio);
+    background-color: #fdf3d8;
+    border: 1px solid var(--punto-pendiente);
+    color: #7a5c0b;
+    font-weight: bold;
+    text-align: center;
+}
+
+.contador-tiempo.urgente {
+    background-color: #fbe9e7;
+    border-color: var(--color-error);
+    color: var(--color-error);
+}

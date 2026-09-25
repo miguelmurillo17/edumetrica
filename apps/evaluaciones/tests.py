@@ -916,6 +916,21 @@ class ResponderFueraDePlazoTest(BaseEvaluacionesTest):
         self.assertTrue(respuesta.json()['finalizada'])
         self.assertEqual(respuesta.json()['motivo'], 'profesor')
 
+    def test_el_sondeo_dice_cuanto_plazo_queda(self):
+        # Con esto la pantalla del alumno vuelve a poner su cuenta regresiva
+        # en hora: corre sola entre sondeo y sondeo, pero manda el servidor.
+        segundos = self.consultar_estado().json()['segundos_restantes']
+
+        self.assertGreater(segundos, 3500)
+        self.assertLessEqual(segundos, 3600)
+
+    def test_el_sondeo_no_da_plazo_de_una_cerrada(self):
+        cerrar_evaluacion(self.evaluacion, anticipada=True)
+
+        self.assertEqual(
+            self.consultar_estado().json()['segundos_restantes'], 0
+        )
+
     def test_el_sondeo_no_cierra_nada_dentro_del_plazo(self):
         respuesta = self.consultar_estado()
 
