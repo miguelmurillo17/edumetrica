@@ -5,9 +5,8 @@ reactivos de opción múltiple con un modelo de lenguaje, **los verifica
 ejecutándolos contra SymPy antes de que una persona los vea**, y solo los
 libera al banco cuando un profesor los aprueba. Django 6 + SymPy + LiteLLM.
 
-Software de tesis para el título de Licenciado en Ingeniería de Software
-(Miguel Ángel Murillo González). Es un prototipo funcional, no un producto
-desplegado: ver [Estado del proyecto](#estado-del-proyecto).
+Es un prototipo funcional, no un producto desplegado: ver
+[Estado del proyecto](#estado-del-proyecto).
 
 ---
 
@@ -302,7 +301,8 @@ contando segundos sin remedio, así que `_se_quedo_a_medias()` le concede el
 peor caso del proveedor (todos los intentos agotando su `timeout`) más un
 margen de gracia y después la da por perdida. Y el hilo escribe en SQLite
 mientras el sondeo lee: con varios profesores generando a la vez puede salir
-`database is locked`. En MySQL, que es lo previsto para producción, desaparece.
+`database is locked`. En PostgreSQL, que es lo previsto para producción,
+desaparece: escribe con varias conexiones a la vez.
 
 ### El rechazo se guarda y no se borra al validar
 
@@ -327,7 +327,7 @@ que es la medición que le da sentido al pipeline de dos capas.
 | Backend | Python 3.12, Django 6.0, Django REST Framework |
 | Verificación | SymPy 1.14 |
 | Modelo de lenguaje | LiteLLM 1.100 → Google AI Studio (Gemini) por omisión; Groq y DeepSeek configurados |
-| Base de datos | SQLite en desarrollo, MySQL en producción (conmutable por `.env`) |
+| Base de datos | SQLite en desarrollo, PostgreSQL en producción (conmutable por `.env`) |
 | Frontend | Plantillas de Django + ModelForms; Vue 3 por CDN en la pantalla del alumno; Chart.js por CDN en el tablero |
 | Configuración | python-decouple |
 | Pruebas | `unittest` de Django, 336 pruebas |
@@ -390,7 +390,9 @@ valores de esta tabla son de ejemplo.
 |----------|---------|----------|
 | `SECRET_KEY` | `pon-aqui-una-cadena-larga-y-aleatoria` | Llave de Django. Obligatoria en producción. |
 | `DEBUG` | `False` en producción | Con `DEBUG=True` **se desactivan los validadores de contraseña**, para no estorbar al crear usuarios de prueba. |
-| `DB_ENGINE` | `sqlite` / `mysql` | Con `mysql` hay que `pip install mysqlclient` y llenar `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. |
+| `DB_ENGINE` | `sqlite` / `postgresql` | Con `postgresql` hay que `pip install "psycopg[binary]"` y llenar `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. |
+| `DB_SSLMODE` | vacío, o `require` | Vacío en una instalación local. Los PostgreSQL administrados (Render, Supabase, RDS) exigen conexión cifrada. |
+| `DB_CONN_MAX_AGE` | `60` | Segundos que se reusa una conexión de PostgreSQL antes de volver a abrirla; `0` abre una nueva en cada petición. |
 | `AI_PROVIDER` | `gemini` / `groq` / `deepseek` | Proveedor activo. |
 | `GEMINI_API_KEY` | `llave-de-ejemplo-no-sirve` | Solo la del proveedor que vayas a usar. Se consiguen en las consolas que lista `apps/ia/proveedores.py`. |
 | `AI_MODEL` | vacío, o `gemini/gemini-2.5-flash` | Sobrescribe el modelo por omisión. Debe incluir el prefijo de LiteLLM. **Los identificadores caducan**: si el proveedor contesta que no existe, se ajusta aquí. |
@@ -471,7 +473,7 @@ gráficas de Chart.js y la tabla de preguntas con más error.
 
 ## Estado del proyecto
 
-**Prototipo funcional de tesis.** Corre de punta a punta en desarrollo: se
+**Prototipo funcional.** Corre de punta a punta en desarrollo: se
 generan reactivos contra Gemini, se verifican, se aprueban, se programan
 evaluaciones, los alumnos las presentan y el tablero grafica los resultados. Lo
 que *no* es: no está desplegado, no se ha usado con alumnos reales, y no hay
@@ -480,24 +482,29 @@ métricas de campo.
 Deliberadamente este README no reporta números de calidad de los reactivos
 generados. La tabla `SolicitudGeneracion` guarda lo necesario para medirlo
 —pedidas, recibidas, aprobadas por el verificador, validadas por el profesor,
-modelo y tokens— y ese análisis pertenece al capítulo de resultados de la tesis,
-no a una cifra suelta aquí.
+modelo y tokens— y ese análisis merece medirse sobre una muestra que valga, no
+una cifra suelta aquí.
 
 Lo que falta, en orden de importancia:
 
-- **Nunca se ha corrido en MySQL.** La configuración existe y conmuta por
-  `.env`, pero todas las migraciones y pruebas han sido contra SQLite. Además,
-  el hilo de generación escribiendo en SQLite mientras el sondeo lee puede dar
-  `database is locked` con concurrencia real; es una de las razones para mover a
-  MySQL.
+- **Nunca se ha corrido en PostgreSQL.** La configuración existe y conmuta
+  por `.env`, y la migración `usuarios/0006` crea la collation con que se
+  ordenan los combobox (usa el proveedor ICU, que traen los paquetes oficiales
+  de PostgreSQL pero no cualquier compilación), pero todas las migraciones y
+  pruebas han sido contra SQLite: falta una corrida completa contra PostgreSQL
+  antes de desplegar.
+  Además, el hilo de generación escribiendo en SQLite mientras el sondeo lee
+  puede dar `database is locked` con concurrencia real; es una de las razones
+  para mover a PostgreSQL.
 - **La regla del prompt contra LaTeX no está confirmada.** El modelo devolvió
   una vez un enunciado con `\log_2(x)` crudo, que el alumno habría visto con las
   barras invertidas literales. Se agregó la instrucción de escribir en texto
   plano pero no se ha comprobado que obedezca de forma consistente.
 - **No hay integración continua.** Las pruebas se corren a mano.
 - **`requirements.txt` es un `pip freeze` del entorno completo** e incluye
-  herramientas del documento de tesis (playwright, python-docx, pypandoc) que la
-  aplicación no importa. Hace falta separarlo.
+  herramientas que la aplicación no importa (playwright, python-docx, pypandoc),
+  porque el entorno virtual se comparte con otras tareas. Hace falta separarlo.
+  Tampoco trae `psycopg`, que hay que instalar aparte al pasar a PostgreSQL.
 - **El comando `generar_preguntas` no tiene pruebas.** El servicio y el cliente
   sí; la capa de consola no.
 - **`SITIO_URL` no cubre el correo de restablecer contraseña.** El aviso de
@@ -506,6 +513,3 @@ Lo que falta, en orden de importancia:
 - **`temperature` está anunciado para retirarse** en Gemini 3 en adelante. Hoy
   funciona y LiteLLM solo avisa; cuando se retire, la guía de muestreo se mueve
   a las instrucciones del sistema.
-- **Sin paso de compilación en el frontend.** Vue por CDN fue una decisión, no
-  un descuido, pero la pantalla del alumno crece mal así. Migrar a Vite no
-  tocaría el backend.

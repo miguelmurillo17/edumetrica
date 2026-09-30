@@ -83,20 +83,32 @@ WSGI_APPLICATION = 'config.wsgi.application'
 
 # Base de datos.
 # Por defecto se usa SQLite para poder trabajar sin instalar nada extra.
-# Para usar MySQL basta con definir DB_ENGINE=mysql en el archivo .env
-# junto con los datos de conexion.
-if config('DB_ENGINE', default='sqlite') == 'mysql':
+# Para usar PostgreSQL, que es lo previsto en produccion, basta con definir
+# DB_ENGINE=postgresql en el archivo .env junto con los datos de conexion,
+# y tener instalado el adaptador: pip install "psycopg[binary]"
+if config('DB_ENGINE', default='sqlite') in ('postgresql', 'postgres'):
+    # Los servicios administrados de PostgreSQL suelen exigir conexion
+    # cifrada. Si DB_SSLMODE viene vacio no se manda nada y psycopg usa su
+    # valor por omision, que es el que sirve en una instalacion local.
+    opciones_conexion = {}
+    modo_ssl = config('DB_SSLMODE', default='')
+    if modo_ssl:
+        opciones_conexion['sslmode'] = modo_ssl
+
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.mysql',
+            'ENGINE': 'django.db.backends.postgresql',
             'NAME': config('DB_NAME', default='edumetrica'),
-            'USER': config('DB_USER', default='root'),
+            'USER': config('DB_USER', default='postgres'),
             'PASSWORD': config('DB_PASSWORD', default=''),
             'HOST': config('DB_HOST', default='127.0.0.1'),
-            'PORT': config('DB_PORT', default='3306'),
-            'OPTIONS': {
-                'charset': 'utf8mb4',
-            },
+            'PORT': config('DB_PORT', default='5432'),
+            'OPTIONS': opciones_conexion,
+            # Reusa la conexion entre peticiones en vez de abrir una nueva
+            # cada vez. En PostgreSQL abrir conexion cuesta bastante mas que
+            # en SQLite, donde no hay nada que abrir.
+            'CONN_MAX_AGE': config('DB_CONN_MAX_AGE', default=60, cast=int),
+            'CONN_HEALTH_CHECKS': True,
         }
     }
 else:
