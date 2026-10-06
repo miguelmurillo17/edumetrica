@@ -330,7 +330,7 @@ que es la medición que le da sentido al pipeline de dos capas.
 | Base de datos | SQLite en desarrollo, PostgreSQL en producción (conmutable por `.env`) |
 | Frontend | Plantillas de Django + ModelForms; Vue 3 por CDN en la pantalla del alumno; Chart.js por CDN en el tablero |
 | Configuración | python-decouple |
-| Pruebas | `unittest` de Django, 336 pruebas |
+| Pruebas | `unittest` de Django, 338 pruebas |
 
 **Arquitectura híbrida, a propósito.** No es un SPA con API completa: el
 administrador trabaja en el admin de Django, el profesor en plantillas con
@@ -372,6 +372,15 @@ Login en `/entrar/`. `datos_iniciales` crea `admin@`, `profesor@` y
 `alumno@edumetrica.mx`; la contraseña de prueba está en el propio comando. El
 admin de Django queda en `/admin/` (requiere `createsuperuser`).
 
+Las dependencias están separadas en tres archivos, cada uno con sus
+dependencias directas y no con un `pip freeze` del entorno:
+
+| Archivo | Qué trae |
+|---------|----------|
+| `requirements.txt` | Lo que la aplicación necesita para correr. Es el único que hace falta en desarrollo. |
+| `requirements-produccion.txt` | Lo anterior más `psycopg`, el adaptador de PostgreSQL. |
+| `requirements-documento.txt` | Herramientas ajenas a la aplicación (playwright, pypandoc, python-docx) que comparten el entorno virtual. |
+
 Para poblar el tablero con datos de demostración —alumnos con edad y sexo, dos
 grupos, evaluaciones finalizadas con sus intentos y una evaluación abierta para
 probar el flujo del alumno:
@@ -390,7 +399,7 @@ valores de esta tabla son de ejemplo.
 |----------|---------|----------|
 | `SECRET_KEY` | `pon-aqui-una-cadena-larga-y-aleatoria` | Llave de Django. Obligatoria en producción. |
 | `DEBUG` | `False` en producción | Con `DEBUG=True` **se desactivan los validadores de contraseña**, para no estorbar al crear usuarios de prueba. |
-| `DB_ENGINE` | `sqlite` / `postgresql` | Con `postgresql` hay que `pip install "psycopg[binary]"` y llenar `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. |
+| `DB_ENGINE` | `sqlite` / `postgresql` | Con `postgresql` hay que instalar `requirements-produccion.txt`, que añade `psycopg`, y llenar `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. |
 | `DB_SSLMODE` | vacío, o `require` | Vacío en una instalación local. Los PostgreSQL administrados (Render, Supabase, RDS) exigen conexión cifrada. |
 | `DB_CONN_MAX_AGE` | `60` | Segundos que se reusa una conexión de PostgreSQL antes de volver a abrirla; `0` abre una nueva en cada petición. |
 | `AI_PROVIDER` | `gemini` / `groq` / `deepseek` | Proveedor activo. |
@@ -414,13 +423,14 @@ del modelo.
 ### Pruebas
 
 ```bash
-python manage.py test                # 336 pruebas
+python manage.py test                # 338 pruebas
 python manage.py test apps.catalogo  # una app (ruta de módulo, no etiqueta)
 ```
 
 El verificador y el módulo de IA se prueban completos **sin red y sin base de
 datos**: el cliente va con `mock` y el verificador no depende de nada. Última
-corrida verde completa: 336 pruebas en 142 s.
+corrida verde completa: 338 pruebas en 142 s, en un entorno virtual recién
+creado a partir de `requirements.txt`.
 
 ### Cerrar evaluaciones vencidas
 
@@ -501,15 +511,8 @@ Lo que falta, en orden de importancia:
   barras invertidas literales. Se agregó la instrucción de escribir en texto
   plano pero no se ha comprobado que obedezca de forma consistente.
 - **No hay integración continua.** Las pruebas se corren a mano.
-- **`requirements.txt` es un `pip freeze` del entorno completo** e incluye
-  herramientas que la aplicación no importa (playwright, python-docx, pypandoc),
-  porque el entorno virtual se comparte con otras tareas. Hace falta separarlo.
-  Tampoco trae `psycopg`, que hay que instalar aparte al pasar a PostgreSQL.
 - **El comando `generar_preguntas` no tiene pruebas.** El servicio y el cliente
   sí; la capa de consola no.
-- **`SITIO_URL` no cubre el correo de restablecer contraseña.** El aviso de
-  evaluación programada ya lo usa; las vistas de `django.contrib.auth` arman su
-  enlace por su cuenta y hay que unificarlo antes de desplegar.
 - **`temperature` está anunciado para retirarse** en Gemini 3 en adelante. Hoy
   funciona y LiteLLM solo avisa; cuando se retire, la guía de muestreo se mueve
   a las instrucciones del sistema.

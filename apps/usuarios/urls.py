@@ -29,7 +29,7 @@ urlpatterns = [
     # se avisa que ya se mando, se captura la contrasena nueva y se confirma.
     path(
         'restablecer/',
-        vistas_auth.PasswordResetView.as_view(
+        views.VistaRestablecer.as_view(
             template_name='usuarios/restablecer_solicitar.html',
             email_template_name='usuarios/correo_restablecer.txt',
             subject_template_name='usuarios/correo_restablecer_asunto.txt',

@@ -11,6 +11,7 @@ configurar o tardar, y el aviso sigue estando cuando la persona entra.
 
 import logging
 import threading
+from urllib.parse import urlsplit
 
 from django.conf import settings
 from django.core.mail import EmailMessage, get_connection
@@ -49,6 +50,24 @@ def direccion_absoluta(ruta):
     relativa no lleva a ningun lado.
     """
     return f"{settings.SITIO_URL.rstrip('/')}/{ruta.lstrip('/')}"
+
+
+def partes_del_sitio():
+    """Separa SITIO_URL en protocolo y dominio.
+
+    Las vistas de restablecimiento de Django no arman el enlace con una ruta,
+    como hacemos nosotros: le pasan a la plantilla el protocolo y el dominio
+    por separado. Esto les da esas dos piezas desde la misma configuracion,
+    para que los dos correos del sistema apunten al mismo lugar.
+    """
+    partes = urlsplit(settings.SITIO_URL)
+    # Si en SITIO_URL se omitio el protocolo, urlsplit toma el dominio como
+    # si fuera la ruta; de ahi el respaldo.
+    dominio = partes.netloc or partes.path.strip('/')
+    return {
+        'protocol': partes.scheme or 'http',
+        'domain': dominio,
+    }
 
 
 def armar_correo(*, destinatario, plantilla_asunto, plantilla_cuerpo, contexto):

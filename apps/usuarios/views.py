@@ -2,6 +2,7 @@
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.contrib.auth import views as vistas_auth
 from django.shortcuts import redirect, render, get_object_or_404
 from django.utils import timezone
 
@@ -9,6 +10,7 @@ from .decoradores import roles_permitidos
 from .forms import PersonaCreacionForm, PersonaEdicionForm
 from .listados import resolver_orden
 from .models import Notificacion, Persona
+from .servicios import partes_del_sitio
 
 # Columnas por las que se puede ordenar el listado de personas.
 ORDEN_PERSONAS = {
@@ -17,6 +19,27 @@ ORDEN_PERSONAS = {
     'rol': 'rol',
     'estado': 'is_active',
 }
+
+
+class VistaRestablecer(vistas_auth.PasswordResetView):
+    """Pide el correo y manda el enlace para elegir contrasena nueva.
+
+    Lo unico que agrega sobre la vista de Django es el dominio del enlace.
+    Por omision Django lo saca de la peticion que llego, asi que el correo
+    terminaria apuntando a 127.0.0.1 cuando la solicitud se hace desde la
+    maquina del servidor, o al nombre que traiga la cabecera Host. Aqui se
+    toma de SITIO_URL, que es de donde ya salen los enlaces de los avisos de
+    evaluacion, y asi los dos correos del sistema llevan al mismo lugar.
+    """
+
+    def form_valid(self, formulario):
+        # Se arma aqui y no en la definicion de la clase para leer la
+        # configuracion al momento de mandar el correo, no al importar.
+        self.extra_email_context = {
+            **(self.extra_email_context or {}),
+            **partes_del_sitio(),
+        }
+        return super().form_valid(formulario)
 
 
 @login_required

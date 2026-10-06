@@ -295,6 +295,30 @@ class RestablecerContrasenaTest(TestCase):
         cuerpo = mail.outbox[0].body
         return re.search(r'/restablecer/[^/]+/[^/\s]+/', cuerpo).group(0)
 
+    @override_settings(SITIO_URL='https://edumetrica.mx')
+    def test_el_enlace_apunta_al_dominio_configurado(self):
+        """El correo no debe heredar el dominio de la peticion que llego.
+
+        Django arma el enlace con el Host de la peticion, asi que sin esto el
+        mensaje saldria apuntando a donde corre el servidor -127.0.0.1 si la
+        solicitud se hizo desde ahi- y la persona no podria entrar.
+        """
+        self.pedir()
+
+        cuerpo = mail.outbox[0].body
+        self.assertIn(f'https://edumetrica.mx{self.enlace_del_mensaje()}', cuerpo)
+        self.assertNotIn('testserver', cuerpo)
+
+    @override_settings(SITIO_URL='http://127.0.0.1:8000')
+    def test_respeta_el_protocolo_de_la_configuracion(self):
+        """En desarrollo el sitio no va cifrado y el enlace debe decir http."""
+        self.pedir()
+
+        self.assertIn(
+            f'http://127.0.0.1:8000{self.enlace_del_mensaje()}',
+            mail.outbox[0].body,
+        )
+
     def test_manda_el_mensaje_y_avisa(self):
         respuesta = self.pedir()
 
