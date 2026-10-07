@@ -372,14 +372,9 @@ Login en `/entrar/`. `datos_iniciales` crea `admin@`, `profesor@` y
 `alumno@edumetrica.mx`; la contraseña de prueba está en el propio comando. El
 admin de Django queda en `/admin/` (requiere `createsuperuser`).
 
-Las dependencias están separadas en tres archivos, cada uno con sus
-dependencias directas y no con un `pip freeze` del entorno:
-
-| Archivo | Qué trae |
-|---------|----------|
-| `requirements.txt` | Lo que la aplicación necesita para correr. Es el único que hace falta en desarrollo. |
-| `requirements-produccion.txt` | Lo anterior más `psycopg`, el adaptador de PostgreSQL. |
-| `requirements-documento.txt` | Herramientas ajenas a la aplicación (playwright, pypandoc, python-docx) que comparten el entorno virtual. |
+`requirements.txt` lista las dependencias directas, no un `pip freeze` del
+entorno: es lo que la aplicación necesita y nada más. Al final trae comentado
+`psycopg`, el adaptador de PostgreSQL, que se descomenta para desplegar.
 
 Para poblar el tablero con datos de demostración —alumnos con edad y sexo, dos
 grupos, evaluaciones finalizadas con sus intentos y una evaluación abierta para
@@ -399,7 +394,7 @@ valores de esta tabla son de ejemplo.
 |----------|---------|----------|
 | `SECRET_KEY` | `pon-aqui-una-cadena-larga-y-aleatoria` | Llave de Django. Obligatoria en producción. |
 | `DEBUG` | `False` en producción | Con `DEBUG=True` **se desactivan los validadores de contraseña**, para no estorbar al crear usuarios de prueba. |
-| `DB_ENGINE` | `sqlite` / `postgresql` | Con `postgresql` hay que instalar `requirements-produccion.txt`, que añade `psycopg`, y llenar `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. |
+| `DB_ENGINE` | `sqlite` / `postgresql` | Con `postgresql` hay que descomentar `psycopg` en `requirements.txt` e instalarlo, y llenar `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`. |
 | `DB_SSLMODE` | vacío, o `require` | Vacío en una instalación local. Los PostgreSQL administrados (Render, Supabase, RDS) exigen conexión cifrada. |
 | `DB_CONN_MAX_AGE` | `60` | Segundos que se reusa una conexión de PostgreSQL antes de volver a abrirla; `0` abre una nueva en cada petición. |
 | `AI_PROVIDER` | `gemini` / `groq` / `deepseek` | Proveedor activo. |

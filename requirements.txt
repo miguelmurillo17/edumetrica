@@ -1,12 +1,9 @@
 # Lo que necesita la aplicacion para correr. Son las dependencias directas:
-# pip se encarga de traer las que estas a su vez necesiten.
+# pip se encarga de traer las que estas a su vez necesiten. Antes este archivo
+# era un pip freeze del entorno completo y arrastraba herramientas que la
+# aplicacion ni importa.
 #
 #   pip install -r requirements.txt
-#
-# Para desplegar en PostgreSQL va ademas requirements-produccion.txt, y las
-# herramientas con que se arma el documento escrito estan en
-# requirements-documento.txt. Antes los tres grupos vivian revueltos en un
-# solo archivo generado con pip freeze.
 
 Django==6.0.6
 djangorestframework==3.17.1
@@ -23,3 +20,9 @@ sympy==1.14.0
 
 # Unica frontera con el proveedor de inteligencia artificial.
 litellm==1.100.0
+
+# Adaptador de PostgreSQL. Va comentado porque en desarrollo se trabaja con
+# SQLite y ahi no hace falta; se descomenta para desplegar. La variante
+# "binary" trae compilado lo que necesita, asi no hay que instalar las
+# bibliotecas de PostgreSQL en la maquina para construirlo.
+# psycopg[binary]==3.3.6
