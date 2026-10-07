@@ -440,39 +440,36 @@ python manage.py cerrar_evaluaciones
 
 ## Capturas
 
-<!-- Sustituye cada línea por la imagen correspondiente. Sugerencia:
-     guárdalas en docs/capturas/ y déjalas con estos nombres. -->
-
 **1. Petición de un reactivo** — `/preguntas/generar/`, con el selector de
 asignatura y nivel y el contador de generaciones restantes de la hora.
 
-<!-- ![Petición de un reactivo](docs/capturas/01-generar.png) -->
+![Petición de un reactivo](docs/capturas/01-generar.png)
 
 **2. Revisión con el dictamen del verificador** — la captura más importante:
 `/preguntas/<id>/revisar/` mostrando un reactivo **rechazado** con su
 `motivo_rechazo` a la vista y los botones de validar, corregir y descartar.
 
-<!-- ![Revisión con dictamen](docs/capturas/02-revisar-rechazada.png) -->
+![Revisión con dictamen](docs/capturas/02-revisar-rechazada.png)
 
 **3. Revisión de un reactivo aprobado** — el mismo `/revisar/` con el dictamen
 en verde y el procedimiento paso a paso.
 
-<!-- ![Revisión aprobada](docs/capturas/03-revisar-aprobada.png) -->
+![Revisión aprobada](docs/capturas/03-revisar-aprobada.png)
 
 **4. Pantalla del alumno** — la app Vue pregunta por pregunta, con la barra de
-avance y la cuenta regresiva de los últimos tres minutos.
+avance y el aviso de que la respuesta ya quedó guardada.
 
-<!-- ![Pantalla del alumno](docs/capturas/04-alumno.png) -->
+![Pantalla del alumno](docs/capturas/04-alumno.png)
 
 **5. Retroalimentación inmediata** — el resultado del intento con el
 procedimiento desplegado en las preguntas que el alumno falló.
 
-<!-- ![Retroalimentación](docs/capturas/05-retroalimentacion.png) -->
+![Retroalimentación](docs/capturas/05-retroalimentacion.png)
 
 **6. Tablero del profesor** — `/tablero/` con las tarjetas de resumen, las
 gráficas de Chart.js y la tabla de preguntas con más error.
 
-<!-- ![Tablero](docs/capturas/06-tablero.png) -->
+![Tablero](docs/capturas/06-tablero.png)
 
 ---
 
