@@ -77,6 +77,20 @@
                 [[ enviando ? 'Enviando...' : 'Finalizar' ]]
             </button>
         </div>
+
+        <!-- Confirmacion propia cuando quedan preguntas sin responder. No se
+             usa window.confirm por lo mismo que se explica en base.html: hay
+             navegadores que no muestran el cuadro nativo, y entonces la
+             entrega se cancelaba sin que el alumno viera nada. -->
+        <dialog ref="dialogoFaltantes" class="dialogo">
+            <p>[[ avisoFaltantes ]]</p>
+            <div class="acciones">
+                <button type="button" class="boton-principal boton-compacto"
+                        @click="confirmarFinalizar">Finalizar de todos modos</button>
+                <button type="button" class="boton-secundario boton-compacto"
+                        @click="cancelarFinalizar">Seguir contestando</button>
+            </div>
+        </dialog>
     </div>
 
     <!-- Resultado final -->
@@ -217,6 +231,14 @@
                 }
                 return Math.round((this.respondidas / this.preguntas.length) * 100);
             },
+            faltanPorResponder() {
+                return this.preguntas.length - this.respondidas;
+            },
+            avisoFaltantes() {
+                return this.faltanPorResponder === 1
+                    ? 'Te queda 1 pregunta sin responder. ¿Deseas finalizar de todos modos?'
+                    : `Te quedan ${this.faltanPorResponder} preguntas sin responder. ¿Deseas finalizar de todos modos?`;
+            },
         },
         methods: {
             async iniciar() {
@@ -355,16 +377,18 @@
                 }
             },
             async finalizar() {
-                const faltan = this.preguntas.length - this.respondidas;
-                if (faltan > 0) {
-                    const aviso = faltan === 1
-                        ? 'Te queda 1 pregunta sin responder. ¿Deseas finalizar de todos modos?'
-                        : `Te quedan ${faltan} preguntas sin responder. ¿Deseas finalizar de todos modos?`;
-                    if (!confirm(aviso)) {
-                        return;
-                    }
+                if (this.faltanPorResponder > 0) {
+                    this.$refs.dialogoFaltantes.showModal();
+                    return;
                 }
                 await this.entregar();
+            },
+            async confirmarFinalizar() {
+                this.$refs.dialogoFaltantes.close();
+                await this.entregar();
+            },
+            cancelarFinalizar() {
+                this.$refs.dialogoFaltantes.close();
             },
             async entregar() {
                 this.enviando = true;

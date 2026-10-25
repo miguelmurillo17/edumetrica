@@ -10,7 +10,9 @@ completo.
 
 import csv
 from datetime import date, timedelta
+from io import StringIO
 
+from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 from django.utils import timezone
@@ -21,7 +23,7 @@ from apps.catalogo.models import (
 from apps.evaluaciones.models import (
     AsignacionDocente, Evaluacion, Grupo, IntentoEvaluacion, RespuestaAlumno,
 )
-from apps.usuarios.models import Persona
+from apps.usuarios.models import Notificacion, Persona
 from apps.reportes.templatetags.reportes_extras import resaltar
 
 
@@ -891,3 +893,186 @@ class ResaltarFiltroTest(TestCase):
 
         self.assertNotIn('<script>', resultado)
         self.assertIn('&lt;script&gt;', resultado)
+
+
+class DatosDemoTest(TestCase):
+    """El comando que siembra la demostracion y sus dos banderas.
+
+    Importa que sea repetible: el escenario del alumno se arma con el, y antes
+    no habia forma de volver a sembrarlo sin borrar a mano. Tambien importa que
+    el borrado se meta solo con lo suyo, porque convive con el banco de
+    preguntas capturado a mano.
+    """
+
+    def sembrar(self, **opciones):
+        salida = StringIO()
+        call_command('datos_demo', stdout=salida, **opciones)
+        return salida.getvalue()
+
+    def test_siembra_solo_tres_niveles(self):
+        # Una version anterior creaba seis y los tres sobrantes salian vacios
+        # en los filtros y en la grafica de aciertos por nivel.
+        self.sembrar()
+
+        self.assertEqual(Nivel.objects.count(), 3)
+        self.assertEqual(
+            list(Nivel.objects.order_by('numero').values_list('nombre', flat=True)),
+            ['Básico', 'Intermedio', 'Avanzado'],
+        )
+
+    def test_sin_bandera_no_vuelve_a_sembrar(self):
+        self.sembrar()
+        evaluaciones = Evaluacion.objects.count()
+
+        salida = self.sembrar()
+
+        self.assertIn('ya estaban cargados', salida)
+        self.assertEqual(Evaluacion.objects.count(), evaluaciones)
+
+    def test_reiniciar_vuelve_a_sembrar_sin_duplicar(self):
+        self.sembrar()
+        evaluaciones = Evaluacion.objects.count()
+        grupos = Grupo.objects.count()
+        alumnos = Persona.objects.filter(correo__endswith='@demo.mx').count()
+
+        self.sembrar(reiniciar=True)
+
+        self.assertEqual(Evaluacion.objects.count(), evaluaciones)
+        self.assertEqual(Grupo.objects.count(), grupos)
+        self.assertEqual(
+            Persona.objects.filter(correo__endswith='@demo.mx').count(), alumnos
+        )
+
+    def test_reiniciar_respeta_el_banco_capturado_a_mano(self):
+        self.sembrar()
+        # Una pregunta que no nacio del comando no se debe ir con el borrado.
+        materia = Materia.objects.get(nombre='Matemáticas')
+        ajena = Pregunta.objects.create(
+            materia=materia,
+            categoria=materia.categorias.first(),
+            nivel=Nivel.objects.get(numero=1),
+            enunciado='¿Cuánto es 2 + 2?',
+            estado=Pregunta.Estado.VALIDADA,
+        )
+
+        self.sembrar(reiniciar=True)
+
+        self.assertTrue(Pregunta.objects.filter(id=ajena.id).exists())
+
+    def test_reiniciar_no_se_lleva_a_los_usuarios_de_datos_iniciales(self):
+        profesor = Persona.objects.create_user(
+            correo='profesor@edumetrica.mx', nombre='Profesor', apellido='Demo',
+            password='x', rol=Persona.Rol.PROFESOR,
+        )
+        self.sembrar()
+
+        self.sembrar(reiniciar=True)
+
+        self.assertTrue(Persona.objects.filter(id=profesor.id).exists())
+
+    def test_minutos_acorta_la_ventana_de_la_practica(self):
+        # Sin la bandera la ventana dura tres dias y no se alcanza a ver ni la
+        # cuenta regresiva ni la entrega automatica.
+        self.sembrar(minutos=6)
+
+        practica = Evaluacion.objects.get(titulo__startswith='Examen de practica')
+        restan = (practica.fecha_fin - timezone.now()).total_seconds()
+        self.assertLess(restan, 6 * 60 + 5)
+        self.assertGreater(restan, 6 * 60 - 60)
+
+    def test_sin_minutos_la_ventana_dura_dias(self):
+        self.sembrar()
+
+        practica = Evaluacion.objects.get(titulo__startswith='Examen de practica')
+        restan = (practica.fecha_fin - timezone.now()).total_seconds()
+        self.assertGreater(restan, 2 * 24 * 3600)
+
+    def test_el_alumno_de_datos_iniciales_queda_en_el_primer_grupo(self):
+        # Es con el que entra el script de capturas de la tesis; sin grupo no
+        # le aparece ninguna evaluacion que presentar.
+        alumno = Persona.objects.create_user(
+            correo='alumno@edumetrica.mx', nombre='Alumno', apellido='Demo',
+            password='x', rol=Persona.Rol.ALUMNO,
+        )
+
+        self.sembrar()
+
+        self.assertTrue(Grupo.objects.filter(nombre='Primero A', alumnos=alumno).exists())
+
+    def test_la_practica_prefiere_el_banco_capturado_a_mano(self):
+        # Las preguntas de ejemplo dicen "pregunta de ejemplo numero N" y su
+        # opcion correcta se llama "Respuesta correcta": sirven para el tablero
+        # pero no para las capturas de pantalla de la tesis.
+        self.sembrar()
+        materia = Materia.objects.get(nombre='Matemáticas')
+        categoria = materia.categorias.first()
+        nivel = Nivel.objects.get(numero=1)
+        for numero in range(5):
+            Pregunta.objects.create(
+                materia=materia, categoria=categoria, nivel=nivel,
+                enunciado=f'Pregunta de verdad número {numero}',
+                estado=Pregunta.Estado.VALIDADA,
+            )
+
+        self.sembrar(reiniciar=True)
+
+        practica = Evaluacion.objects.get(titulo__startswith='Examen de practica')
+        enunciados = list(practica.preguntas.values_list('enunciado', flat=True))
+        self.assertEqual(len(enunciados), 5)
+        for enunciado in enunciados:
+            self.assertNotIn('pregunta de ejemplo', enunciado)
+
+    def test_la_practica_usa_las_de_ejemplo_si_no_hay_banco(self):
+        # En una base recien creada el comando tiene que seguir sirviendo.
+        self.sembrar()
+
+        practica = Evaluacion.objects.get(titulo__startswith='Examen de practica')
+        self.assertEqual(practica.preguntas.count(), 5)
+
+    def test_reiniciar_quita_los_avisos_que_apuntan_a_lo_borrado(self):
+        self.sembrar()
+        alumno = Persona.objects.filter(correo__endswith='@demo.mx').first()
+        evaluacion = Evaluacion.objects.first()
+        Notificacion.objects.create(
+            persona=alumno, titulo='Una evaluación llegó a su fin',
+            descripcion='x', url=f'/evaluaciones/{evaluacion.id}/',
+        )
+
+        self.sembrar(reiniciar=True)
+
+        self.assertEqual(Notificacion.objects.count(), 0)
+
+    def test_reiniciar_barre_los_avisos_huerfanos_de_corridas_anteriores(self):
+        # Un aviso que apunta a una evaluacion que ya no existe lleva, en la
+        # campanita, a una pagina que no carga.
+        self.sembrar()
+        # El aviso es del profesor y no de un alumno demo: a los alumnos se los
+        # lleva el borrado por persona, asi que con uno de ellos no se estaria
+        # probando el barrido sino aquello.
+        profesor = Persona.objects.create_user(
+            correo='otro@edumetrica.mx', nombre='Otro', apellido='Profesor',
+            password='x', rol=Persona.Rol.PROFESOR,
+        )
+        Notificacion.objects.create(
+            persona=profesor, titulo='Aviso viejo', descripcion='x',
+            url='/evaluaciones/99999/',
+        )
+
+        salida = self.sembrar(reiniciar=True)
+
+        self.assertFalse(Notificacion.objects.filter(url='/evaluaciones/99999/').exists())
+        self.assertIn('ya no tenia destino', salida)
+
+    def test_reiniciar_deja_en_paz_los_avisos_que_no_son_de_evaluaciones(self):
+        self.sembrar()
+        ajeno = Persona.objects.create_user(
+            correo='alguien@edumetrica.mx', nombre='Alguien', apellido='Ajeno',
+            password='x', rol=Persona.Rol.PROFESOR,
+        )
+        aviso = Notificacion.objects.create(
+            persona=ajeno, titulo='Otro asunto', descripcion='x', url='/preguntas/',
+        )
+
+        self.sembrar(reiniciar=True)
+
+        self.assertTrue(Notificacion.objects.filter(id=aviso.id).exists())
